@@ -49,9 +49,7 @@ class TestSaaSRAGIsolation:
             collection_name=tenant_b
         )
         
-        # 3. Mock the RAG chain to simulate retrieval
-        # Since we use Chroma with distinct collections, we can verify the collection names
-        # were passed correctly to get_vector_store.
+        # 3. Verify the isolated vector collections directly.
         
         # Let's check that we have separate collections in the vector store
         store_a = rag_service.get_vector_store(tenant_a)
@@ -71,7 +69,7 @@ class TestSaaSRAGIsolation:
 
     def test_rag_sanitization_is_safe(self, mock_rag_deps):
         """
-        Verify that special characters in tenant IDs don't break Chroma.
+        Verify that special characters in tenant IDs don't break collection naming.
         """
         messy_tenant = "user@domain.com!#$"
         rag_service.ingest_text(

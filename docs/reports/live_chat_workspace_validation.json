@@ -1,0 +1,26 @@
+{
+  "generated_at_utc": "2026-03-04T08:48:57.004Z",
+  "dashboard_url": "http://127.0.0.1:9101/?start=dashboard",
+  "checks": [
+    {
+      "name": "inbox_has_rows",
+      "passed": true,
+      "observed": 65
+    },
+    {
+      "name": "message_input_visible",
+      "passed": true
+    },
+    {
+      "name": "blank_state_hidden_when_rows_exist",
+      "passed": true,
+      "observed": false
+    },
+    {
+      "name": "sender_prefixed_previews_present",
+      "passed": true,
+      "observed": 65
+    }
+  ],
+  "passed": true
+}

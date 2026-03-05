@@ -1,0 +1,28 @@
+{
+  "total": 133,
+  "passed": 129,
+  "failed": 4,
+  "generated_at_utc": "2026-03-04T13:13:53.495758+00:00",
+  "by_tenant": {
+    "ops@adamsbridge.com": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    "ops@dataflo.io": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    "ops@tangentcloud.in": {
+      "total": 100,
+      "passed": 96,
+      "failed": 4
+    },
+    "ops@workez.in": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    }
+  }
+}

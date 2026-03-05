@@ -1,0 +1,70 @@
+name: tangentcloud-saas
+region: blr
+services:
+  - name: api
+    source_dir: backend
+    github:
+      repo: kamarajp/TCSAASBOT
+      branch: main
+      deploy_on_push: false
+    dockerfile_path: Dockerfile
+    http_port: 9100
+    instance_count: 1
+    instance_size_slug: basic-xs
+    envs:
+      - key: ENV
+        value: production
+      - key: PORT
+        value: "9100"
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: REDIS_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: AUTH_PASSWORD
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: FRONTEND_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: OPENAI_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: GOOGLE_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: CHROMA_DB_DIR
+        value: /tmp/chroma
+      - key: STORAGE_BACKEND
+        value: local
+      - key: CACHE_BACKEND
+        value: redis
+      - key: QUEUE_BACKEND
+        value: memory
+      - key: SECRETS_BACKEND
+        value: env
+    health_check:
+      http_path: /healthz
+    routes:
+      - path: /api
+      - path: /healthz
+      - path: /
+
+  - name: dashboard
+    source_dir: dashboard
+    github:
+      repo: kamarajp/TCSAASBOT
+      branch: main
+      deploy_on_push: false
+    build_command: npm ci && npm run build
+    run_command: npm run start -- --hostname 0.0.0.0 --port 8080
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NEXT_PUBLIC_API_URL
+        value: ${api.PUBLIC_URL}

@@ -1,0 +1,268 @@
+{
+  "totalTests": 52,
+  "passed": 6,
+  "failed": 26,
+  "timestamp": "2026-03-05T05:35:53.191Z",
+  "results": [
+    {
+      "timestamp": "2026-03-05T05:30:54.845Z",
+      "status": "INFO",
+      "message": "Initializing TangentCloud Workflow Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:30:58.910Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Assistant Configuration Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:30:58.911Z",
+      "status": "INFO",
+      "message": "🧪 Testing Assistant Configuration - Welcome Messages"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:09.927Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"CONFIGURE\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:09.927Z",
+      "status": "WARN",
+      "message": "Assistant Configuration Test failed - continuing with other tests"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:09.927Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Live Chat Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:09.927Z",
+      "status": "INFO",
+      "message": "🧪 Testing Live Chat - Conversation Management"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:39.931Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Live Chat\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:44.933Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"conversation-list\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:47.947Z",
+      "status": "FAIL",
+      "message": "Selector not found: input[placeholder*=\"Search conversations\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:50.949Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"All\"), button:has-text(\"New\"), button:has-text(\"Open\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:50.950Z",
+      "status": "PASS",
+      "message": "Live Chat test passed"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:50.950Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Story Builder Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:31:50.950Z",
+      "status": "INFO",
+      "message": "🧪 Testing Story Builder - Conversation Flows"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:20.952Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Story Builder\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:25.954Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"flow-canvas\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:28.955Z",
+      "status": "FAIL",
+      "message": "Selector not found: .react-flow"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:28.955Z",
+      "status": "FAIL",
+      "message": "Story Builder canvas not loaded"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:28.955Z",
+      "status": "WARN",
+      "message": "Story Builder Test failed - continuing with other tests"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:28.955Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Canned Responses Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:28.956Z",
+      "status": "INFO",
+      "message": "🧪 Testing Canned Responses - Quick Replies"
+    },
+    {
+      "timestamp": "2026-03-05T05:32:58.957Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Canned Responses\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:03.957Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"canned-responses-list\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:06.963Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"Add Response\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:09.963Z",
+      "status": "FAIL",
+      "message": "Selector not found: input[placeholder*=\"Search responses\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:09.963Z",
+      "status": "PASS",
+      "message": "Canned Responses test passed"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:09.963Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Small Talk Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:09.964Z",
+      "status": "INFO",
+      "message": "🧪 Testing Small Talk - Casual Conversation Handling"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:39.965Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Small Talk\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:44.967Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"small-talk-patterns\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:47.977Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"Add Pattern\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:50.977Z",
+      "status": "FAIL",
+      "message": "Selector not found: textarea, input[type=\"text\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:50.977Z",
+      "status": "PASS",
+      "message": "Small Talk test passed"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:50.977Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Data Collection Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:33:50.977Z",
+      "status": "INFO",
+      "message": "🧪 Testing Data Collection - Lead Forms"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:20.979Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Data Collection\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:25.980Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"form-builder\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:28.987Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"Add Field\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:31.987Z",
+      "status": "FAIL",
+      "message": "Selector not found: select"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:31.987Z",
+      "status": "PASS",
+      "message": "Data Collection test passed"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:31.987Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Integrations Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:34:31.987Z",
+      "status": "INFO",
+      "message": "🧪 Testing Integrations - External Services"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:01.992Z",
+      "status": "FAIL",
+      "message": "Failed to click: button:has-text(\"Integrations\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:06.997Z",
+      "status": "FAIL",
+      "message": "Selector not found: [data-testid=\"integrations-list\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:07.005Z",
+      "status": "PASS",
+      "message": "Integration cards available"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:10.006Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"Configure\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:10.006Z",
+      "status": "PASS",
+      "message": "Integrations test passed"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:10.006Z",
+      "status": "INFO",
+      "message": "\n🚀 Starting Chat Simulation Test"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:10.006Z",
+      "status": "INFO",
+      "message": "🧪 Testing End-to-End Chat Simulation"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:13.007Z",
+      "status": "FAIL",
+      "message": "Selector not found: button[data-testid=\"close-config\"]"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:53.013Z",
+      "status": "FAIL",
+      "message": "Selector not found: button:has-text(\"SIMULATE\")"
+    },
+    {
+      "timestamp": "2026-03-05T05:35:53.014Z",
+      "status": "WARN",
+      "message": "Chat Simulation Test failed - continuing with other tests"
+    }
+  ]
+}

@@ -15,7 +15,7 @@ class EmailService:
         config = db.query(EmailSettingsDB).filter(EmailSettingsDB.tenant_id == tenant_id).first()
         
         if not config or not config.is_enabled:
-            logger.warning(f"Email notifications not enabled or configured for tenant {tenant_id}")
+            logger.warning("email_disabled_or_unconfigured", extra={"tenant_id": tenant_id})
             return False
 
         # If no recipient provided, send to the configured sender (admin)
@@ -29,18 +29,22 @@ class EmailService:
             
             msg.attach(MIMEText(body, 'html'))
             
-            # Connect to SMTP server
-            server = smtplib.SMTP(config.smtp_host, config.smtp_port)
-            server.starttls()
-            server.login(config.smtp_user, config.smtp_pass)
-            server.send_message(msg)
-            server.quit()
+            # Best effort + timeout keeps failures retry-safe for upstream lead writes.
+            with smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=10) as server:
+                server.starttls()
+                server.login(config.smtp_user, config.smtp_pass)
+                server.send_message(msg)
             
-            logger.info(f"Email sent successfully to {to_email} for tenant {tenant_id}")
+            logger.info("email_sent", extra={"tenant_id": tenant_id, "recipient": to_email})
             return True
             
         except Exception as e:
-            logger.error(f"Failed to send email for tenant {tenant_id}: {str(e)}")
+            logger.warning("email_send_failed", extra={
+                "tenant_id": tenant_id,
+                "recipient": to_email,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            })
             return False
 
     def notify_new_lead(self, db: Session, tenant_id: str, lead_data: dict):

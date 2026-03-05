@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ENV: production
+      DATABASE_URL: postgresql+psycopg://tcsaas:tcsaas@db:5432/tcsaas
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_PATH: /app/data/qdrant
+      STORAGE_BACKEND: local
+      CACHE_BACKEND: redis
+      QUEUE_BACKEND: memory
+      SECRETS_BACKEND: env
+      PORT: 9100
+    ports:
+      - "9100:9100"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - qdrant_data:/app/data/qdrant
+      - artifacts_data:/app/artifacts
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tcsaas
+      POSTGRES_USER: tcsaas
+      POSTGRES_PASSWORD: tcsaas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  artifacts_data:

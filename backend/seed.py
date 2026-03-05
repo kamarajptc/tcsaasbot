@@ -24,24 +24,42 @@ from app.models.bot import Bot, BotFAQ, BotFlow
 # 1. TENANT DEFINITIONS (Synthetic Companies)
 # ─────────────────────────────────────────────
 TENANTS = [
-    {"id": "demo_tenant_key", "name": "Global Solutions MVP", "plan": "starter"},
-    {"id": "pro_user_saas", "name": "Peak AI Systems", "plan": "pro"},
-    {"id": "ent_nexus_corp", "name": "Nexus Worldwide", "plan": "enterprise"},
-    {"id": "agency_digital_hq", "name": "DigitalHQ Agency", "plan": "pro"},
-    {"id": "startup_launchpad", "name": "LaunchPad.io", "plan": "starter"},
+    {"id": "admin@globalsolutions.com", "name": "Global Solutions MVP", "plan": "enterprise"},
+    {"id": "gary@peakai.systems", "name": "Peak AI Systems", "plan": "pro"},
+    {"id": "dan@digitalhq.agency", "name": "DigitalHQ Agency", "plan": "pro"},
+    {"id": "sarah@cloudfleet.io", "name": "CloudFleet Logistics", "plan": "pro"},
+    {"id": "alex@startup-nexus.com", "name": "Startup Nexus", "plan": "starter"},
+    {"id": "james@enterprise-hub.net", "name": "Enterprise Hub", "plan": "enterprise"},
+    {"id": "emma@people-first.org", "name": "People First HR", "plan": "pro"},
+    {"id": "robert@fintech-alpha.com", "name": "FinTech Alpha", "plan": "pro"},
+    {"id": "linda@logistics-pro.com", "name": "Logistics Pro", "plan": "pro"},
+    {"id": "kevin@neural-networks.tech", "name": "Neural Networks Tech", "plan": "enterprise"},
+    {"id": "compliance@nexusworldwide.com", "name": "Nexus Compliance", "plan": "enterprise"},
+    {"id": "fiona@userexperience.design", "name": "UX Design Lab", "plan": "pro"},
+    {"id": "growth@startup-launchpad.io", "name": "Startup Launchpad", "plan": "pro"},
+    {"id": "support@helpcenter.io", "name": "HelpCenter.io", "plan": "pro"},
+    {"id": "data@analytics-pro.ai", "name": "Analytics Pro AI", "plan": "enterprise"},
+    {"id": "partners@globalsecosystem.com", "name": "Global Ecosystems", "plan": "pro"},
+    {"id": "audit@security-first.net", "name": "Security First", "plan": "enterprise"},
+    {"id": "recruiting@hiring-hub.co", "name": "Hiring Hub", "plan": "pro"},
+    {"id": "content@marketing-pros.com", "name": "Marketing Pros", "plan": "pro"},
+    {"id": "legal@corporate-nexus.com", "name": "Corporate Nexus", "plan": "pro"},
 ]
+
+
 
 
 # ─────────────────────────────────────────────
 # 2. BOT PERSONAS (12 distinct characters)
 # ─────────────────────────────────────────────
 BOT_PERSONAS = [
-    # ── Tenant: Global Solutions MVP (Starter) ──
+    # ── Tenant: Global Solutions (Enterprise) ──
     {
-        "tenant_id": "demo_tenant_key",
+        "tenant_id": "admin@globalsolutions.com",
         "name": "Support Sarah",
+
         "description": "Empathetic technical support agent who solves issues step-by-step.",
-        "welcome_message": "Hello! I'm Sarah. Let me help you resolve your issue today. 💡",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#2563eb",
         "prompt_template": (
             "You are Sarah, a highly empathetic and efficient technical support engineer. "
@@ -60,10 +78,11 @@ BOT_PERSONAS = [
         "agent_email": "support-escalation@globalsolutions.com",
     },
     {
-        "tenant_id": "demo_tenant_key",
+        "tenant_id": "admin@globalsolutions.com",
         "name": "Onboarding Ollie",
+
         "description": "Friendly onboarding assistant guiding new users through setup.",
-        "welcome_message": "Welcome aboard! 🚀 I'm Ollie, your setup guide. Let's get you started!",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#10b981",
         "prompt_template": (
             "You are Ollie, a warm and encouraging onboarding specialist. "
@@ -73,10 +92,11 @@ BOT_PERSONAS = [
     },
     # ── Tenant: Peak AI Systems (Pro) ──
     {
-        "tenant_id": "pro_user_saas",
+        "tenant_id": "gary@peakai.systems",
         "name": "Growth Gary",
+
         "description": "High-energy sales and marketing assistant focused on conversions.",
-        "welcome_message": "Hey! 🔥 Ready to scale your business? Gary here — let's make it happen!",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#059669",
         "prompt_template": (
             "You are Gary, a charismatic sales executive with deep SaaS knowledge. "
@@ -90,10 +110,11 @@ BOT_PERSONAS = [
         ],
     },
     {
-        "tenant_id": "pro_user_saas",
+        "tenant_id": "gary@peakai.systems",
         "name": "Analytics Amy",
+
         "description": "Data-driven insights analyst who speaks fluent metrics.",
-        "welcome_message": "Hi there! 📊 I'm Amy. Let me help you make sense of your data.",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#7c3aed",
         "prompt_template": (
             "You are Amy, a senior data analyst. You interpret metrics, "
@@ -102,10 +123,11 @@ BOT_PERSONAS = [
         ),
     },
     {
-        "tenant_id": "pro_user_saas",
+        "tenant_id": "gary@peakai.systems",
         "name": "Content Clara",
+
         "description": "Creative content strategist for marketing teams.",
-        "welcome_message": "Hey! ✍️ I'm Clara. Need copy, campaigns, or content ideas? Let's brainstorm!",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#ec4899",
         "prompt_template": (
             "You are Clara, a creative content strategist. "
@@ -113,12 +135,13 @@ BOT_PERSONAS = [
             "Always ask about tone, audience, and platform before creating."
         ),
     },
-    # ── Tenant: Nexus Worldwide (Enterprise) ──
+    # ── Tenant: Startup Nexus (Starter) ──
     {
-        "tenant_id": "ent_nexus_corp",
+        "tenant_id": "alex@startup-nexus.com",
         "name": "Architect Alex",
+
         "description": "Deeply technical system architect for enterprise solutions.",
-        "welcome_message": "Greetings. I am Alex. Shall we discuss architecture? 🏗️",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#4f46e5",
         "prompt_template": (
             "You are Alex, a senior system architect with 15+ years of experience. "
@@ -129,10 +152,11 @@ BOT_PERSONAS = [
         "agent_email": "architects@nexusworldwide.com",
     },
     {
-        "tenant_id": "ent_nexus_corp",
+        "tenant_id": "alex@startup-nexus.com",
         "name": "Compliance Chris",
+
         "description": "Regulatory compliance expert for GDPR, HIPAA, SOC2.",
-        "welcome_message": "Hello. I'm Chris, your compliance advisor. How may I assist? 🔒",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#dc2626",
         "prompt_template": (
             "You are Chris, a compliance officer specializing in GDPR, HIPAA, and SOC2. "
@@ -141,10 +165,11 @@ BOT_PERSONAS = [
         ),
     },
     {
-        "tenant_id": "ent_nexus_corp",
+        "tenant_id": "alex@startup-nexus.com",
         "name": "HR Hannah",
+
         "description": "Internal HR assistant for employee questions and policies.",
-        "welcome_message": "Hi! 👋 I'm Hannah from HR. How can I help you today?",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#f59e0b",
         "prompt_template": (
             "You are Hannah, a friendly and knowledgeable HR assistant. "
@@ -156,10 +181,11 @@ BOT_PERSONAS = [
     },
     # ── Tenant: DigitalHQ Agency (Pro) ──
     {
-        "tenant_id": "agency_digital_hq",
+        "tenant_id": "dan@digitalhq.agency",
         "name": "Demo Dan",
+
         "description": "Product demo specialist who shows features via guided walkthroughs.",
-        "welcome_message": "Hey! 🎯 I'm Dan. Want a quick tour of the product? Let's go!",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#0ea5e9",
         "prompt_template": (
             "You are Dan, an enthusiastic product demo specialist. "
@@ -168,10 +194,11 @@ BOT_PERSONAS = [
         ),
     },
     {
-        "tenant_id": "agency_digital_hq",
+        "tenant_id": "dan@digitalhq.agency",
         "name": "Feedback Fiona",
+
         "description": "Collects user feedback and feature requests with empathy.",
-        "welcome_message": "Hi! 🗣️ I'm Fiona. Your feedback shapes our product. What's on your mind?",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#14b8a6",
         "prompt_template": (
             "You are Fiona, a user research specialist. Collect feedback with open-ended questions. "
@@ -179,12 +206,13 @@ BOT_PERSONAS = [
             "or praise. Thank users sincerely."
         ),
     },
-    # ── Tenant: LaunchPad.io (Starter) ──
+    # ── Tenant: Logistics Pro (Pro) ──
     {
-        "tenant_id": "startup_launchpad",
+        "tenant_id": "linda@logistics-pro.com",
         "name": "Pitch Pete",
+
         "description": "Startup pitch coach and investor relations assistant.",
-        "welcome_message": "Yo! 🚀 I'm Pete. Let's sharpen your pitch and wow investors!",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#f97316",
         "prompt_template": (
             "You are Pete, a startup pitch coach with VC experience. "
@@ -193,10 +221,11 @@ BOT_PERSONAS = [
         ),
     },
     {
-        "tenant_id": "startup_launchpad",
+        "tenant_id": "linda@logistics-pro.com",
         "name": "DevOps Dex",
+
         "description": "CI/CD and infrastructure automation helper.",
-        "welcome_message": "Hey dev! 🔧 I'm Dex. Let's automate everything. What's your infra challenge?",
+        "welcome_message": "Welcome to TangentCloud. Ask me anything.",
         "primary_color": "#6366f1",
         "prompt_template": (
             "You are Dex, a DevOps engineer specializing in CI/CD, Docker, Kubernetes, "
@@ -223,7 +252,7 @@ FAQS = {
         {"question": "What integrations do you support?", "answer": "We integrate with Slack, Shopify, Zendesk, Freshdesk, and any webhook-enabled tool.", "category": "Integrations"},
     ],
     "Architect Alex": [
-        {"question": "What database do you use?", "answer": "We use PostgreSQL for relational data and ChromaDB for vector embeddings. Redis handles caching and pub/sub.", "category": "Architecture"},
+        {"question": "What database do you use?", "answer": "We use PostgreSQL for relational data and Qdrant for vector embeddings. Redis handles caching and pub/sub.", "category": "Architecture"},
         {"question": "How is data encrypted?", "answer": "AES-256 at rest, TLS 1.3 in transit. Encryption keys are managed via AWS KMS with automatic rotation.", "category": "Security"},
     ],
     "Compliance Chris": [

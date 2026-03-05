@@ -3,7 +3,6 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 openai
-chromadb
 pydantic-settings
 uuid
 langchain
@@ -11,8 +10,10 @@ langchain-openai
 langchain-community
 beautifulsoup4
 requests
-langchain-chroma
+httpx
+qdrant-client
 sqlalchemy
+psycopg[binary]
 aiomysql
 redis
 alembic

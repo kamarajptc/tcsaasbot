@@ -9,6 +9,10 @@ from sqlalchemy.pool import StaticPool
 os.environ["GOOGLE_API_KEY"] = "dummy_key"
 os.environ["OPENAI_API_KEY"] = "dummy_key"
 os.environ["LLM_PROVIDER"] = "gemini"
+os.environ["ALLOW_API_KEY_AUTH"] = "false"
+os.environ["AUTH_PASSWORD"] = "password123"
+os.environ["AUTH_REQUIRE_EXISTING_TENANT"] = "true"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 # Mock telemetry to avoid OTEL errors and threading issues
 import sys
@@ -49,6 +53,9 @@ def client(db_session):
             pass
     
     app.dependency_overrides[get_db] = override_get_db
+    app.state.rate_limit_session_factory = lambda: db_session
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+    if hasattr(app.state, "rate_limit_session_factory"):
+        delattr(app.state, "rate_limit_session_factory")

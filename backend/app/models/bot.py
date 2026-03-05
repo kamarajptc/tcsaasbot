@@ -11,7 +11,8 @@ class Bot(Base):
     name = Column(String(100), nullable=False)
     description = Column(String(255))
     prompt_template = Column(Text, default="You are a helpful assistant.")
-    welcome_message = Column(String(255), default="Hi! How can I help you today?")
+    response_mode = Column(String(40), default="knowledge_plus_reasoning")
+    welcome_message = Column(String(255), default="Welcome to TangentCloud. Ask me anything.")
     primary_color = Column(String(20), default="#2563eb")
     avatar_url = Column(String(255), nullable=True)
     position = Column(String(20), default="right") # left, right

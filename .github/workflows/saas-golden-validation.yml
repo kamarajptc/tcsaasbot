@@ -1,0 +1,73 @@
+name: SaaS Golden Validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**"
+      - "scripts/**"
+      - "docs/testdata/**"
+      - ".github/workflows/saas-golden-validation.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///./ci_validation.db
+      SECRET_KEY: ci-secret-key-please-change
+      AUTH_PASSWORD: password123
+      AUTH_REQUIRE_EXISTING_TENANT: "false"
+      ALLOW_API_KEY_AUTH: "false"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "120"
+      LLM_PROVIDER: localhash
+      QDRANT_PATH: ./qdrant_db
+      RATE_LIMIT_AUTH_RPM: "1000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/venv
+          ./backend/venv/bin/pip install --upgrade pip
+          ./backend/venv/bin/pip install -r backend/requirements.txt
+
+      - name: Start backend
+        run: |
+          cd backend
+          nohup ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 9100 > ../saas-validation-backend.log 2>&1 &
+          echo $! > ../backend.pid
+          cd ..
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /tmp/backend-health -w "%{http_code}" http://127.0.0.1:9100/ || true)
+            if [ "$code" = "200" ]; then
+              cat /tmp/backend-health
+              exit 0
+            fi
+            sleep 2
+          done
+          cat saas-validation-backend.log
+          exit 1
+
+      - name: Bootstrap SaaS fixtures
+        run: ./backend/venv/bin/python scripts/bootstrap_saas_fixture.py --tenant all
+
+      - name: Run multi-tenant golden validation
+        run: ./backend/venv/bin/python scripts/run_saas_validation.py --tenant all
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: saas-golden-validation-reports
+          path: |
+            docs/reports/saas_validation_all.csv
+            docs/reports/saas_validation_all.json
+            saas-validation-backend.log
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then kill "$(cat backend.pid)" || true; fi

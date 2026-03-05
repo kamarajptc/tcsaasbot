@@ -14,7 +14,7 @@ async def seed_data():
     
     # 1. Ingest information about TangentCloud AI Bots itself
     about_text = """
-    TangentCloud AI Bots is an innovative SaaS chatbot platform built with React Native, FastAPI, OpenAI, and ChromaDB.
+    TangentCloud AI Bots is an innovative SaaS chatbot platform built with React Native, FastAPI, OpenAI, and Qdrant.
     It features a multi-tenant architecture where each user's data is isolated using API keys.
     The backend uses LangChain for RAG (Retrieval-Augmented Generation) to provide accurate answers from ingested documents.
     The mobile app is built with Expo and React Native, supporting both iOS and Android.

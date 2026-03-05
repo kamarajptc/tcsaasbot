@@ -1,0 +1,90 @@
+[
+  {
+    "case_id": "WZ-GEN-001",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "What is the validation code for WorkEZ?",
+    "expected_contains": ["vc-workez-2026"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-002",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "What support alias is configured for WorkEZ?",
+    "expected_contains": ["support-workez"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-003",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "What is the test marker for WorkEZ?",
+    "expected_contains": ["qa-ready-workez"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-004",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "What is the official website for WorkEZ?",
+    "expected_contains": ["https://workez.in/"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-005",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Which business category is assigned to WorkEZ?",
+    "expected_contains": ["HRMS and Payroll"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-006",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Tell me the brand keyword of WorkEZ.",
+    "expected_contains": ["workez"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-007",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Repeat the validation code for WorkEZ.",
+    "expected_contains": ["vc-workez-2026"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-008",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Repeat the support alias for WorkEZ.",
+    "expected_contains": ["support-workez"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-009",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Repeat the test marker for WorkEZ.",
+    "expected_contains": ["qa-ready-workez"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-010",
+    "scenario": "positive",
+    "category": "validation",
+    "question": "Which domain is the primary knowledge domain for WorkEZ?",
+    "expected_contains": ["https://workez.in/"],
+    "forbidden_contains": []
+  },
+  {
+    "case_id": "WZ-GEN-011",
+    "scenario": "positive",
+    "category": "profile",
+    "question": "Give a short profile summary for WorkEZ.",
+    "expected_contains": ["workez", "HRMS and Payroll"],
+    "forbidden_contains": ["knowledge ledger"]
+  }
+]

@@ -1,0 +1,158 @@
+{
+  "totalTests": 30,
+  "passed": 2,
+  "failed": 11,
+  "timestamp": "2026-03-05T05:36:34.426Z",
+  "results": [
+    {
+      "timestamp": "2026-03-05T05:36:29.121Z",
+      "status": "INFO",
+      "message": "Initializing Workflow Validator"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:31.243Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Dashboard Access Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:31.244Z",
+      "status": "INFO",
+      "message": "🔍 Validating Dashboard Access"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.245Z",
+      "status": "PASS",
+      "message": "Dashboard loaded successfully"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.245Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Bot Presence Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.245Z",
+      "status": "INFO",
+      "message": "🔍 Validating Bot Presence"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.267Z",
+      "status": "PASS",
+      "message": "Found 26 bot(s) on dashboard"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.267Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Configuration Access Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:32.267Z",
+      "status": "INFO",
+      "message": "🔍 Validating Configuration Access"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.313Z",
+      "status": "FAIL",
+      "message": "Configuration modal did not open"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.314Z",
+      "status": "WARN",
+      "message": "Configuration Access validation failed"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.314Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Configuration Tabs Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.314Z",
+      "status": "INFO",
+      "message": "🔍 Validating Configuration Tabs"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.317Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Assistant Configuration"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.320Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Live Chat"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.325Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Story Builder"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.327Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Canned Responses"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.329Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Small Talk"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.330Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Data Collection"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.331Z",
+      "status": "FAIL",
+      "message": "✗ Missing tab: Integrations"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.331Z",
+      "status": "FAIL",
+      "message": "Only 0/7 tabs found"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.331Z",
+      "status": "WARN",
+      "message": "Configuration Tabs validation failed"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.331Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Assistant Configuration Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.331Z",
+      "status": "INFO",
+      "message": "🔍 Validating Assistant Configuration Tab"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.333Z",
+      "status": "FAIL",
+      "message": "Welcome message input not found"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.333Z",
+      "status": "WARN",
+      "message": "Assistant Configuration validation failed"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.333Z",
+      "status": "INFO",
+      "message": "\n🚀 Running Chat Simulation Validation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.333Z",
+      "status": "INFO",
+      "message": "🔍 Validating Chat Simulation"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.335Z",
+      "status": "FAIL",
+      "message": "No SIMULATE buttons found"
+    },
+    {
+      "timestamp": "2026-03-05T05:36:34.335Z",
+      "status": "WARN",
+      "message": "Chat Simulation validation failed"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "tenant_id": "ops@tangentcloud.in",
+    "tenant_name": "TangentCloud",
+    "plan": "enterprise",
+    "website": "https://www.tangentcloud.in/",
+    "bot_name": "TangentCloud Assistant",
+    "category": "AI SaaS Platforms",
+    "expected_keyword": "tangentcloud",
+    "anchor_ids": ["about", "services", "contact"],
+    "golden_set": "tangentcloud_golden_set.json"
+  },
+  {
+    "tenant_id": "ops@dataflo.io",
+    "tenant_name": "dataflo",
+    "plan": "pro",
+    "website": "https://www.dataflo.io/",
+    "bot_name": "Dataflo Workflow Guide",
+    "category": "No-Code Data Automation",
+    "expected_keyword": "dataflo",
+    "anchor_ids": [],
+    "golden_set": "dataflo_golden_set.json"
+  },
+  {
+    "tenant_id": "ops@adamsbridge.com",
+    "tenant_name": "Adamsbridge",
+    "plan": "enterprise",
+    "website": "https://adamsbridge.com/",
+    "bot_name": "Adamsbridge IAM Assistant",
+    "category": "Identity and Access Management",
+    "expected_keyword": "adamsbridge",
+    "anchor_ids": [],
+    "golden_set": "adamsbridge_golden_set.json"
+  },
+  {
+    "tenant_id": "ops@workez.in",
+    "tenant_name": "WorkEZ",
+    "plan": "pro",
+    "website": "https://workez.in/",
+    "bot_name": "WorkEZ HR Assistant",
+    "category": "HRMS and Payroll",
+    "expected_keyword": "workez",
+    "anchor_ids": [],
+    "golden_set": "workez_golden_set.json"
+  }
+]

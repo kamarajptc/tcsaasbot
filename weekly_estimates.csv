@@ -1,0 +1,12 @@
+Module/Component,Development (weeks),Test-Data (weeks),Testing (weeks),Deployment (weeks),Notes
+Core API & Models,2-3,0.5-1,1-2,0.5,Includes schema design services validation
+Authentication / Security,1-2,0.5,1,0.5,Token flows OAuth audit logging
+Billing & Quota,1-2,0.5,1-2,0.5,Edge cases around over-usage
+Live-chat / Real-time,2-3,1,2,1,Load scenarios and latency tests
+Analytics & Reporting,2,1,2,0.5,Data pipelines + dashboard
+Integrations / External APIs,1.5-2,0.5,1-2,0.5,Mocking third-party systems
+Monitoring / Observability,1,0.5,1,0.5,Grafana/Loki stack deployment
+Quality / RAG Service,1-1.5,0.5,1-2,0.5,Data-quality rules suggestion engine
+Mobile/Front-end (dashboard),2-3,1,2-3,1,UI e2e tests CI pipeline
+Seed & Test-data tooling,1,2,0.5-1,0.5,Scripts like seed_db.py etc.
+Deployment & CI/CD pipeline,1,-,1,1-2,Automation staging/production

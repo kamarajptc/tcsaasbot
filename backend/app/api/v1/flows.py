@@ -37,7 +37,7 @@ def create_flow(bot_id: int, flow: FlowCreate, db: Session = Depends(get_db), te
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
         
-    db_flow = BotFlow(**flow.dict(), bot_id=bot_id)
+    db_flow = BotFlow(**flow.model_dump(), bot_id=bot_id)
     db.add(db_flow)
     db.commit()
     db.refresh(db_flow)
@@ -68,7 +68,7 @@ def update_flow(bot_id: int, flow_id: int, flow_update: FlowCreate, db: Session 
     if not db_flow:
         raise HTTPException(status_code=404, detail="Flow not found")
         
-    for key, value in flow_update.dict().items():
+    for key, value in flow_update.model_dump().items():
         setattr(db_flow, key, value)
     
     db_flow.version += 1

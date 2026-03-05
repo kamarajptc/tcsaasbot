@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-03-03T06:54:17.855984+00:00",
+  "base_url": "http://localhost:9100",
+  "results": {
+    "chat_public_style": {
+      "operation": "chat_public_style",
+      "requests": 2,
+      "failures": 0,
+      "total_seconds": 5.933,
+      "throughput_rps": 0.34,
+      "latency_ms": {
+        "avg": 2966.43,
+        "p50": 1383.82,
+        "p95": 4549.04,
+        "p99": 4549.04,
+        "max": 4549.04
+      }
+    },
+    "dashboard_conversations": {
+      "operation": "dashboard_conversations",
+      "requests": 2,
+      "failures": 0,
+      "total_seconds": 0.1752,
+      "throughput_rps": 11.42,
+      "latency_ms": {
+        "avg": 87.48,
+        "p50": 86.63,
+        "p95": 88.32,
+        "p99": 88.32,
+        "max": 88.32
+      }
+    },
+    "ingest_scrape": {
+      "operation": "ingest_scrape",
+      "requests": 1,
+      "failures": 0,
+      "total_seconds": 0.1073,
+      "throughput_rps": 9.32,
+      "latency_ms": {
+        "avg": 107.16,
+        "p50": 107.16,
+        "p95": 107.16,
+        "p99": 107.16,
+        "max": 107.16
+      }
+    }
+  }
+}

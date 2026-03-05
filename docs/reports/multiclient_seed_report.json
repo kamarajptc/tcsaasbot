@@ -1,0 +1,132 @@
+{
+  "generated_at": "2026-02-25T12:14:57.609944+00:00",
+  "reset": {
+    "sql_reset": true,
+    "vector_paths_removed": [
+      "/Users/kamarajp/TCSAASBOT/chroma_db"
+    ]
+  },
+  "clients": [
+    {
+      "tenant_id": "ops@tangentcloud.in",
+      "tenant_name": "TangentCloud",
+      "plan": "enterprise",
+      "website": "https://www.tangentcloud.in/",
+      "bot_id": 1,
+      "bot_name": "TangentCloud Assistant",
+      "category": "AI SaaS Platforms",
+      "scrape_ok": true,
+      "scrape_result": {
+        "status": "success",
+        "pages_scraped": 1,
+        "pages_discovered": 1,
+        "new_pages_indexed": 5,
+        "failed_pages": 0,
+        "section_docs_indexed": 4,
+        "max_pages": 12,
+        "titles": [
+          "Tangent Cloud | Transforming the Sky of Possibilities"
+        ]
+      },
+      "documents_count": 6,
+      "questions_total": 11,
+      "questions_passed": 11,
+      "questions_failed": 0
+    },
+    {
+      "tenant_id": "ops@dataflo.io",
+      "tenant_name": "dataflo",
+      "plan": "pro",
+      "website": "https://www.dataflo.io/",
+      "bot_id": 3,
+      "bot_name": "Dataflo Workflow Guide",
+      "category": "No-Code Data Automation",
+      "scrape_ok": true,
+      "scrape_result": {
+        "status": "success",
+        "pages_scraped": 12,
+        "pages_discovered": 12,
+        "new_pages_indexed": 14,
+        "failed_pages": 0,
+        "section_docs_indexed": 2,
+        "max_pages": 12,
+        "titles": [
+          "KPI dashboard for SaaS go-to-market teams",
+          "KPI dashboard for SaaS go-to-market teams",
+          "Dataflo Blog: Guides, Tips & Insights",
+          "Schedule a Demo | Dataflo",
+          "Thank you"
+        ]
+      },
+      "documents_count": 15,
+      "questions_total": 11,
+      "questions_passed": 11,
+      "questions_failed": 0
+    },
+    {
+      "tenant_id": "ops@adamsbridge.com",
+      "tenant_name": "Adamsbridge",
+      "plan": "enterprise",
+      "website": "https://adamsbridge.com/",
+      "bot_id": 4,
+      "bot_name": "Adamsbridge IAM Assistant",
+      "category": "Identity and Access Management",
+      "scrape_ok": true,
+      "scrape_result": {
+        "status": "success",
+        "pages_scraped": 12,
+        "pages_discovered": 12,
+        "new_pages_indexed": 13,
+        "failed_pages": 0,
+        "section_docs_indexed": 1,
+        "max_pages": 12,
+        "titles": [
+          "AdamsBridge \u2013 Creative Solutions for Complex Business Problems",
+          "Outsourcing Your Property Accounting: Shift Your Focus to Higher Value Activities with the Right Partner \u2013 AdamsBridge",
+          "The Real Estate Data Revolution: Time to Move to the Next Stage \u2013 AdamsBridge",
+          "Contact \u2013 AdamsBridge",
+          "Blog \u2013 AdamsBridge"
+        ]
+      },
+      "documents_count": 14,
+      "questions_total": 11,
+      "questions_passed": 11,
+      "questions_failed": 0
+    },
+    {
+      "tenant_id": "ops@workez.in",
+      "tenant_name": "WorkEZ",
+      "plan": "pro",
+      "website": "https://workez.in/",
+      "bot_id": 5,
+      "bot_name": "WorkEZ HR Assistant",
+      "category": "HRMS and Payroll",
+      "scrape_ok": true,
+      "scrape_result": {
+        "status": "success",
+        "pages_scraped": 12,
+        "pages_discovered": 12,
+        "new_pages_indexed": 15,
+        "failed_pages": 0,
+        "section_docs_indexed": 3,
+        "max_pages": 12,
+        "titles": [
+          "WorkEZ Office Space For Rent | Coworking Space | Managed Office Space",
+          "amenities - My blog",
+          "terms and conditions - My blog",
+          "Privacy Policy - My blog",
+          "WorkEZ Coworking Spaces: The Best Choice"
+        ]
+      },
+      "documents_count": 16,
+      "questions_total": 11,
+      "questions_passed": 11,
+      "questions_failed": 0
+    }
+  ],
+  "validation_mode": "heuristic_answer_quality",
+  "validation_rule": "answer not empty and no fallback phrase; indicates vector-backed response quality",
+  "questions_total": 44,
+  "questions_passed": 44,
+  "questions_failed": 0
+}

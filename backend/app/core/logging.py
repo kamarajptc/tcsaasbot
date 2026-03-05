@@ -74,6 +74,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
         status_code = response.status_code
+        response.headers["X-Process-Time-Ms"] = str(duration_ms)
 
         log_extra = {
             "http_method": method,
