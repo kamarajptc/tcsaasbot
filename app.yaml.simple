@@ -14,16 +14,10 @@ services:
   envs:
   - key: OPENAI_API_KEY
     scope: RUN_AND_BUILD_TIME
-    value: CHANGEME
+    value: ${OPENAI_API_KEY}
   - key: LLM_PROVIDER
     scope: RUN_AND_BUILD_TIME
     value: openai
-  - key: DATABASE_URL
-    scope: RUN_AND_BUILD_TIME
-    value: postgresql+psycopg://user:password@db:5432/tcsaasbot
-  - key: REDIS_URL
-    scope: RUN_AND_BUILD_TIME
-    value: redis://redis:6379/0
   - key: QDRANT_PATH
     scope: RUN_AND_BUILD_TIME
     value: /app/qdrant_db
