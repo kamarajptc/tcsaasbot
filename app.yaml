@@ -4,9 +4,6 @@
 name: tangentcloud-saas
 services:
 - name: api
-  github:
-    repo: kamaraj/kyrochatbot
-    branch: tcsaasbot
   source_dir: backend
   build_command: pip install -r requirements.txt
   http_port: 8000
@@ -25,9 +22,6 @@ services:
     http_path: /health
 
 - name: web
-  github:
-    repo: kamaraj/kyrochatbot
-    branch: tcsaasbot
   source_dir: dashboard
   build_command: npm ci && npm run build
   http_port: 3000
