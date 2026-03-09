@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     RAG_RETRIEVAL_FETCH_K: int = 24
     RAG_RETRIEVAL_SCORE_THRESHOLD: float = 0.18
     
-    # Database
-    DATABASE_URL: str = "sqlite:////Users/kamarajp/TCSAASBOT/backend/sql_app.db"
+    # Database (default: local Postgres). Override via environment or .env.
+    DATABASE_URL: str = "postgresql+psycopg://kamarajp@localhost:5432/tcsaasbot"
 
     
     # Redis

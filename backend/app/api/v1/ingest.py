@@ -12,6 +12,7 @@ from pypdf import PdfReader
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+import time
 
 from app.services.rag_service import rag_service
 from app.core.security import get_current_user_id
@@ -20,6 +21,9 @@ from app.core.logging import logger
 from app.core.usage_limits import check_document_quota, remaining_document_slots
 from app.core.config import get_settings
 from app.core.url_security import is_safe_outbound_url
+from app.core.telemetry import get_tracer
+
+tracer = get_tracer("ingest_service")
 
 settings = get_settings()
 
@@ -50,7 +54,11 @@ def _canonical_host(host: str) -> str:
 
 
 def _same_domain(a: str, b: str) -> bool:
-    return _canonical_host(a) == _canonical_host(b)
+    # Use strict domain matching - require exact match (including www prefix)
+    # This prevents mixing https://example.com with https://www.example.com
+    a_lower = (a or "").strip().lower()
+    b_lower = (b or "").strip().lower()
+    return a_lower == b_lower
 
 def _host_variants(host: str) -> List[str]:
     host = (host or "").strip().lower()
@@ -59,6 +67,61 @@ def _host_variants(host: str) -> List[str]:
     if host.startswith("www."):
         return [host, host[4:]]
     return [host, f"www.{host}"]
+
+
+def _detect_correct_domain_variant(base_url: str, timeout: int = 5) -> Optional[str]:
+    """
+    Detect the correct domain variant (www vs non-www) by testing both variants.
+    If the provided variant fails, try the alternate and return the working one.
+    
+    Args:
+        base_url: The base URL provided by the user
+        timeout: Request timeout in seconds
+        
+    Returns:
+        The corrected base_url if alternate works, None if original works, or original if both fail
+    """
+    try:
+        parsed = urlparse(base_url)
+        original_host = parsed.netloc.lower()
+        
+        # Get the alternate variant
+        variants = _host_variants(original_host)
+        if len(variants) < 2:
+            return None  # No variant available
+        
+        alternate_host = variants[1]
+        if alternate_host == original_host:
+            return None  # No alternate variant
+        
+        # Test original URL
+        try:
+            response = requests.head(base_url, timeout=timeout, allow_redirects=True)
+            if response.status_code < 400:
+                return None  # Original works
+        except Exception:
+            pass  # Original failed, test alternate
+        
+        # Test alternate URL
+        alternate_url = base_url.replace(original_host, alternate_host, 1)
+        try:
+            response = requests.head(alternate_url, timeout=timeout, allow_redirects=True)
+            if response.status_code < 400:
+                logger.info("domain_variant_corrected", extra={
+                    "original_domain": original_host,
+                    "corrected_domain": alternate_host,
+                    "original_url": base_url,
+                    "corrected_url": alternate_url
+                })
+                return alternate_url  # Alternate works better
+        except Exception:
+            pass  # Alternate also failed
+        
+        return None  # Both failed or original is correct
+        
+    except Exception as e:
+        logger.debug("domain_variant_detection_error", extra={"error": str(e)})
+        return None
 
 
 def _increment_usage(db: Session, tenant_id: str, field: str, amount: int = 1):
@@ -381,11 +444,16 @@ async def audit_test_runner(
 def _get_internal_links(soup, base_url, domain):
     from urllib.parse import urljoin
     links = []
+    domain_mismatches = 0
 
     def maybe_add(raw_url: str):
+        nonlocal domain_mismatches
         full_url = urljoin(base_url, raw_url)
         parsed_full = urlparse(full_url)
-        if not _same_domain(parsed_full.netloc, domain) or parsed_full.fragment:
+        if not _same_domain(parsed_full.netloc, domain):
+            domain_mismatches += 1
+            return
+        if parsed_full.fragment:
             return
         clean_url = _normalize_url(f"{parsed_full.scheme}://{parsed_full.netloc}{parsed_full.path}")
         if _should_skip_url(clean_url):
@@ -405,6 +473,13 @@ def _get_internal_links(soup, base_url, domain):
             if match.startswith("//"):
                 continue
             maybe_add(match)
+
+    if domain_mismatches > 0:
+        logger.debug("domain_mismatches_filtered", extra={
+            "base_url": base_url,
+            "target_domain": domain,
+            "mismatches_skipped": domain_mismatches
+        })
 
     return links
 
@@ -459,89 +534,212 @@ def _build_existing_web_doc_map(db: Session, tenant_id: str):
 
 
 def _extract_sitemaps_from_robots(base_url: str, headers: Dict[str, str]) -> List[str]:
-    try:
-        parsed = urlparse(base_url)
-        robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-        response = requests.get(robots_url, headers=headers, timeout=8)
-        if response.status_code != 200:
+    with tracer.start_as_current_span("extract_sitemaps_from_robots") as span:
+        span.set_attribute("base_url", base_url)
+        try:
+            parsed = urlparse(base_url)
+            robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+            span.set_attribute("robots_url", robots_url)
+            
+            logger.info("robots_fetch_start", extra={"robots_url": robots_url})
+            response = requests.get(robots_url, headers=headers, timeout=8)
+            
+            logger.info("robots_fetch_response", extra={
+                "robots_url": robots_url,
+                "status_code": response.status_code,
+                "response_size": len(response.text)
+            })
+            span.set_attribute("robots_status_code", response.status_code)
+            
+            if response.status_code != 200:
+                logger.warning("robots_not_found", extra={"robots_url": robots_url, "status": response.status_code})
+                return []
+            
+            sitemaps = []
+            for line in response.text.splitlines():
+                if line.lower().startswith("sitemap:"):
+                    sitemap_url = line.split(":", 1)[1].strip()
+                    if sitemap_url:
+                        sitemaps.append(sitemap_url)
+                        logger.debug("sitemap_found_in_robots", extra={"sitemap_url": sitemap_url})
+            
+            logger.info("robots_parse_complete", extra={"sitemaps_found": len(sitemaps)})
+            span.set_attribute("sitemaps_found", len(sitemaps))
+            return sitemaps
+        except requests.exceptions.Timeout as e:
+            logger.error("robots_timeout", extra={"base_url": base_url, "error": str(e)})
+            span.set_attribute("error_type", "timeout")
             return []
-        sitemaps = []
-        for line in response.text.splitlines():
-            if line.lower().startswith("sitemap:"):
-                sitemap_url = line.split(":", 1)[1].strip()
-                if sitemap_url:
-                    sitemaps.append(sitemap_url)
-        return sitemaps
-    except Exception:
-        return []
+        except requests.exceptions.RequestException as e:
+            logger.error("robots_request_failed", extra={"base_url": base_url, "error": str(e)})
+            span.set_attribute("error_type", "request_exception")
+            return []
+        except Exception as e:
+            logger.error("robots_extraction_failed", extra={"base_url": base_url, "error": str(e)})
+            span.set_attribute("error_type", "generic_exception")
+            return []
 
 
 def _fetch_sitemap_urls(base_url: str, headers: Dict[str, str], domain: str, max_urls: int = 30000) -> List[str]:
-    parsed = urlparse(base_url)
-    seed_sitemaps = set()
-    for host in _host_variants(parsed.netloc):
-        seed_sitemaps.update({
-            f"{parsed.scheme}://{host}/sitemap.xml",
-            f"{parsed.scheme}://{host}/sitemap_index.xml",
-            f"{parsed.scheme}://{host}/sitemap.xml.gz",
-            f"{parsed.scheme}://{host}/sitemap_index.xml.gz",
-            f"{parsed.scheme}://{host}/product-sitemap.xml",
-            f"{parsed.scheme}://{host}/product-sitemap.xml.gz",
-            f"{parsed.scheme}://{host}/page-sitemap.xml",
-            f"{parsed.scheme}://{host}/category-sitemap.xml",
+    with tracer.start_as_current_span("fetch_sitemap_urls") as span:
+        span.set_attribute("base_url", base_url)
+        span.set_attribute("domain", domain)
+        span.set_attribute("max_urls", max_urls)
+        
+        parsed = urlparse(base_url)
+        seed_sitemaps = set()
+        for host in _host_variants(parsed.netloc):
+            seed_sitemaps.update({
+                f"{parsed.scheme}://{host}/sitemap.xml",
+                f"{parsed.scheme}://{host}/sitemap_index.xml",
+                f"{parsed.scheme}://{host}/sitemap.xml.gz",
+                f"{parsed.scheme}://{host}/sitemap_index.xml.gz",
+                f"{parsed.scheme}://{host}/product-sitemap.xml",
+                f"{parsed.scheme}://{host}/product-sitemap.xml.gz",
+                f"{parsed.scheme}://{host}/page-sitemap.xml",
+                f"{parsed.scheme}://{host}/category-sitemap.xml",
+            })
+        
+        for sm in _extract_sitemaps_from_robots(base_url, headers):
+            seed_sitemaps.add(sm)
+
+        logger.info("sitemap_discovery_start", extra={
+            "base_url": base_url,
+            "domain": domain,
+            "seed_sitemaps": len(seed_sitemaps),
+            "standard_paths": 8
         })
-    for sm in _extract_sitemaps_from_robots(base_url, headers):
-        seed_sitemaps.add(sm)
+        span.set_attribute("seed_sitemaps_count", len(seed_sitemaps))
 
-    sitemap_queue = list(seed_sitemaps)
-    visited_sitemaps = set()
-    discovered_urls = []
-    seen_urls = set()
+        sitemap_queue = list(seed_sitemaps)
+        visited_sitemaps = set()
+        discovered_urls = []
+        seen_urls = set()
+        fetch_errors = []
+        domain_mismatch_urls = 0
 
-    while sitemap_queue and len(discovered_urls) < max_urls:
-        sitemap_url = sitemap_queue.pop(0)
-        if sitemap_url in visited_sitemaps:
-            continue
-        visited_sitemaps.add(sitemap_url)
+        while sitemap_queue and len(discovered_urls) < max_urls:
+            sitemap_url = sitemap_queue.pop(0)
+            if sitemap_url in visited_sitemaps:
+                continue
+            visited_sitemaps.add(sitemap_url)
 
-        try:
-            response = requests.get(sitemap_url, headers=headers, timeout=12)
-            if response.status_code != 200:
+            try:
+                logger.debug("fetching_sitemap", extra={"sitemap_url": sitemap_url})
+                fetch_start = time.time()
+                response = requests.get(sitemap_url, headers=headers, timeout=12)
+                fetch_elapsed = time.time() - fetch_start
+                
+                logger.debug("sitemap_fetch_complete", extra={
+                    "sitemap_url": sitemap_url,
+                    "status_code": response.status_code,
+                    "response_size": len(response.content),
+                    "fetch_time_seconds": round(fetch_elapsed, 2)
+                })
+                
+                if response.status_code != 200:
+                    logger.warning("sitemap_fetch_failed", extra={
+                        "sitemap_url": sitemap_url,
+                        "status_code": response.status_code
+                    })
+                    fetch_errors.append({"url": sitemap_url, "status": response.status_code})
+                    continue
+
+                content = response.content
+                if sitemap_url.endswith(".gz"):
+                    try:
+                        logger.debug("decompressing_gzip_sitemap", extra={"sitemap_url": sitemap_url})
+                        content = gzip.decompress(content)
+                        logger.debug("gzip_decompressed", extra={
+                            "sitemap_url": sitemap_url,
+                            "decompressed_size": len(content)
+                        })
+                    except Exception as e:
+                        logger.error("gzip_decompression_failed", extra={
+                            "sitemap_url": sitemap_url,
+                            "error": str(e)
+                        })
+                        continue
+
+                try:
+                    root = ET.fromstring(content)
+                    root_tag = root.tag.lower()
+                    is_index = root_tag.endswith("sitemapindex")
+                    
+                    logger.debug("sitemap_parsed", extra={
+                        "sitemap_url": sitemap_url,
+                        "is_index": is_index,
+                        "root_tag": root_tag
+                    })
+
+                    for loc in root.findall(".//{*}loc"):
+                        loc_url = (loc.text or "").strip()
+                        if not loc_url:
+                            continue
+                        parsed_loc = urlparse(loc_url)
+                        if not _same_domain(parsed_loc.netloc, domain):
+                            domain_mismatch_urls += 1
+                            logger.debug("url_domain_mismatch", extra={
+                                "url": loc_url,
+                                "expected_domain": domain,
+                                "actual_domain": parsed_loc.netloc
+                            })
+                            continue
+
+                        normalized = _normalize_url(loc_url)
+                        if is_index:
+                            if normalized not in visited_sitemaps:
+                                logger.debug("adding_child_sitemap", extra={"sitemap_url": normalized})
+                                sitemap_queue.append(normalized)
+                        else:
+                            if normalized not in seen_urls:
+                                seen_urls.add(normalized)
+                                discovered_urls.append(normalized)
+                                if len(discovered_urls) >= max_urls:
+                                    logger.info("max_urls_reached", extra={"max_urls": max_urls})
+                                    break
+                except ET.ParseError as e:
+                    logger.error("sitemap_xml_parse_failed", extra={
+                        "sitemap_url": sitemap_url,
+                        "error": str(e)
+                    })
+                    fetch_errors.append({"url": sitemap_url, "error": "parse_error"})
+                    continue
+                    
+            except requests.exceptions.Timeout:
+                logger.error("sitemap_fetch_timeout", extra={"sitemap_url": sitemap_url})
+                fetch_errors.append({"url": sitemap_url, "error": "timeout"})
+                continue
+            except requests.exceptions.RequestException as e:
+                logger.error("sitemap_fetch_exception", extra={
+                    "sitemap_url": sitemap_url,
+                    "error": str(e)
+                })
+                fetch_errors.append({"url": sitemap_url, "error": str(e)})
+                continue
+            except Exception as e:
+                logger.error("sitemap_processing_exception", extra={
+                    "sitemap_url": sitemap_url,
+                    "error": str(e)
+                })
+                fetch_errors.append({"url": sitemap_url, "error": str(e)})
                 continue
 
-            content = response.content
-            if sitemap_url.endswith(".gz"):
-                try:
-                    content = gzip.decompress(content)
-                except Exception:
-                    continue
+        logger.info("sitemap_discovery_complete", extra={
+            "base_url": base_url,
+            "sitemaps_visited": len(visited_sitemaps),
+            "urls_discovered": len(discovered_urls),
+            "domain_mismatch_urls_skipped": domain_mismatch_urls,
+            "fetch_errors": len(fetch_errors),
+            "errors": fetch_errors if fetch_errors else None
+        })
+        
+        span.set_attribute("sitemaps_visited", len(visited_sitemaps))
+        span.set_attribute("urls_discovered", len(discovered_urls))
+        span.set_attribute("domain_mismatch_urls", domain_mismatch_urls)
+        span.set_attribute("fetch_errors", len(fetch_errors))
 
-            root = ET.fromstring(content)
-            root_tag = root.tag.lower()
-            is_index = root_tag.endswith("sitemapindex")
-
-            for loc in root.findall(".//{*}loc"):
-                loc_url = (loc.text or "").strip()
-                if not loc_url:
-                    continue
-                parsed_loc = urlparse(loc_url)
-                if not _same_domain(parsed_loc.netloc, domain):
-                    continue
-
-                normalized = _normalize_url(loc_url)
-                if is_index:
-                    if normalized not in visited_sitemaps:
-                        sitemap_queue.append(normalized)
-                else:
-                    if normalized not in seen_urls:
-                        seen_urls.add(normalized)
-                        discovered_urls.append(normalized)
-                        if len(discovered_urls) >= max_urls:
-                            break
-        except Exception:
-            continue
-
-    return discovered_urls
+        return discovered_urls
 
 def _clean_soup_text(soup):
     for script_or_style in soup(["script", "style", "nav", "footer", "header", "form"]):
@@ -639,37 +837,138 @@ def _extract_contact_fallback_section(clean_text: str):
     }
 
 def _fetch_page_payload(url, headers, domain, index_sections: bool = True):
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
+    with tracer.start_as_current_span("fetch_page_payload") as span:
+        span.set_attribute("url", url)
+        span.set_attribute("domain", domain)
+        span.set_attribute("index_sections", index_sections)
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Extract links for the crawler
-        new_links = _get_internal_links(soup, url, domain)
-        
-        # Process content
-        clean_text = _clean_soup_text(soup)
-        if not clean_text.strip():
+        try:
+            logger.debug("page_fetch_start", extra={"url": url})
+            fetch_start = time.time()
+            response = requests.get(url, headers=headers, timeout=15)
+            fetch_elapsed = time.time() - fetch_start
+            
+            logger.debug("page_fetch_complete", extra={
+                "url": url,
+                "status_code": response.status_code,
+                "content_size": len(response.text),
+                "fetch_time_seconds": round(fetch_elapsed, 2)
+            })
+            span.set_attribute("status_code", response.status_code)
+            span.set_attribute("content_size", len(response.text))
+            span.set_attribute("fetch_time_seconds", round(fetch_elapsed, 2))
+            
+            response.raise_for_status()
+            
+            logger.debug("parsing_html", extra={"url": url, "size_bytes": len(response.text)})
+            parse_start = time.time()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            parse_elapsed = time.time() - parse_start
+            
+            logger.debug("html_parsed", extra={
+                "url": url,
+                "parse_time_seconds": round(parse_elapsed, 2)
+            })
+            span.set_attribute("parse_time_seconds", round(parse_elapsed, 2))
+            
+            # Extract links for the crawler
+            logger.debug("extracting_links", extra={"url": url})
+            link_start = time.time()
+            new_links = _get_internal_links(soup, url, domain)
+            link_elapsed = time.time() - link_start
+            
+            logger.debug("links_extracted", extra={
+                "url": url,
+                "links_found": len(new_links),
+                "extraction_time_seconds": round(link_elapsed, 2)
+            })
+            span.set_attribute("links_found", len(new_links))
+            
+            # Process content
+            logger.debug("cleaning_text", extra={"url": url})
+            clean_start = time.time()
+            clean_text = _clean_soup_text(soup)
+            clean_elapsed = time.time() - clean_start
+            
+            logger.debug("text_cleaned", extra={
+                "url": url,
+                "clean_text_length": len(clean_text),
+                "clean_time_seconds": round(clean_elapsed, 2)
+            })
+            span.set_attribute("clean_text_length", len(clean_text))
+            
+            if not clean_text.strip():
+                logger.warning("empty_content_after_cleaning", extra={"url": url})
+                return None
+
+            title = soup.title.string.strip() if soup.title and soup.title.string else url
+            logger.debug("extracted_title", extra={"url": url, "title": title})
+            span.set_attribute("title", title[:100])
+            
+            sections = []
+            if index_sections:
+                logger.debug("extracting_sections", extra={"url": url})
+                section_start = time.time()
+                sections = _extract_semantic_sections(soup)
+                section_elapsed = time.time() - section_start
+                
+                logger.debug("sections_extracted", extra={
+                    "url": url,
+                    "sections_found": len(sections),
+                    "section_extraction_time_seconds": round(section_elapsed, 2)
+                })
+                span.set_attribute("sections_found", len(sections))
+                
+                if not any(section.get("kind") == "contact" for section in sections):
+                    fallback_contact = _extract_contact_fallback_section(clean_text)
+                    if fallback_contact:
+                        sections.append(fallback_contact)
+                        logger.debug("contact_fallback_added", extra={"url": url})
+
+            result = {
+                "title": title,
+                "normalized_url": _normalize_url(url),
+                "clean_text": clean_text,
+                "new_links": new_links,
+                "sections": sections,
+            }
+            
+            logger.info("page_payload_complete", extra={
+                "url": url,
+                "title": title,
+                "content_length": len(clean_text),
+                "links_count": len(new_links),
+                "sections_count": len(sections)
+            })
+            
+            return result
+            
+        except requests.exceptions.Timeout as e:
+            logger.error("page_fetch_timeout", extra={"url": url, "error": str(e)})
+            span.set_attribute("error_type", "timeout")
             return None
-
-        title = soup.title.string.strip() if soup.title and soup.title.string else url
-        sections = _extract_semantic_sections(soup) if index_sections else []
-        if index_sections and not any(section.get("kind") == "contact" for section in sections):
-            fallback_contact = _extract_contact_fallback_section(clean_text)
-            if fallback_contact:
-                sections.append(fallback_contact)
-
-        return {
-            "title": title,
-            "normalized_url": _normalize_url(url),
-            "clean_text": clean_text,
-            "new_links": new_links,
-            "sections": sections,
-        }
-    except Exception as e:
-        logger.error(f"Failed to process page {url}: {str(e)}")
-        return None
+        except requests.exceptions.HTTPError as e:
+            logger.error("page_fetch_http_error", extra={
+                "url": url,
+                "status_code": e.response.status_code,
+                "error": str(e)
+            })
+            span.set_attribute("error_type", "http_error")
+            span.set_attribute("http_status", e.response.status_code)
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error("page_fetch_request_error", extra={"url": url, "error": str(e)})
+            span.set_attribute("error_type", "request_exception")
+            return None
+        except Exception as e:
+            logger.error("page_processing_failed", extra={
+                "url": url,
+                "error": str(e),
+                "error_type": type(e).__name__
+            })
+            span.set_attribute("error_type", "generic_exception")
+            span.set_attribute("error_class", type(e).__name__)
+            return None
 
 
 async def _persist_page_payload(payload, tenant_id, db, existing_docs_by_url, budget: Optional[Dict[str, int]] = None):
@@ -769,108 +1068,260 @@ async def scrape_website(
     tenant_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
-    try:
-        base_url = request.url
-        if not base_url.startswith(('http://', 'https://')):
-            base_url = 'https://' + base_url
-        base_url = _normalize_url(base_url)
-        if not is_safe_outbound_url(base_url):
-            raise HTTPException(status_code=400, detail="Unsafe scrape URL")
-
-        domain = urlparse(base_url).netloc
+    with tracer.start_as_current_span("scrape_website") as span:
+        span.set_attribute("url", request.url)
+        span.set_attribute("tenant_id", tenant_id)
+        span.set_attribute("max_pages", request.max_pages)
+        span.set_attribute("use_sitemaps", request.use_sitemaps)
         
-        max_pages = max(1, min(request.max_pages or 3000, 10000))
-        urls_to_scrape = [base_url]
-        scraped_urls = set()
-        pages_processed = []
-        new_docs_count = 0
-        failed_pages = 0
-        section_docs_indexed = 0
+        scrape_start = time.time()
         
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-        }
-
-        if request.use_sitemaps:
-            sitemap_urls = await asyncio.to_thread(
-                _fetch_sitemap_urls,
-                base_url,
-                headers,
-                domain,
-                max_urls=max_pages * 3,
-            )
-            for sitemap_url in sitemap_urls:
-                if sitemap_url not in urls_to_scrape:
-                    urls_to_scrape.append(sitemap_url)
-
-        existing_docs_by_url = _build_existing_web_doc_map(db, tenant_id)
-        doc_budget = {"remaining": remaining_document_slots(db, tenant_id)}
-        if doc_budget["remaining"] <= 0:
-            raise HTTPException(status_code=403, detail="Document quota exceeded for current plan.")
-
-        while urls_to_scrape and len(scraped_urls) < max_pages:
-            url = urls_to_scrape.pop(0)
-            if url in scraped_urls: continue
-                
-            logger.info(f"Crawl item: {url} ({len(scraped_urls)}/{max_pages})")
-            scraped_urls.add(url)
+        try:
+            logger.info("scrape_request_started", extra={
+                "url": request.url,
+                "tenant_id": tenant_id,
+                "max_pages": request.max_pages,
+                "use_sitemaps": request.use_sitemaps
+            })
             
-            payload = await asyncio.to_thread(
-                _fetch_page_payload,
-                url,
-                headers,
-                domain,
-                request.index_sections,
-            )
-            if payload:
-                title, discovered_links, created_count, sections_count = await _persist_page_payload(
-                    payload,
-                    tenant_id,
-                    db,
-                    existing_docs_by_url,
-                    doc_budget,
+            base_url = request.url
+            if not base_url.startswith(('http://', 'https://')):
+                base_url = 'https://' + base_url
+            
+            base_url = _normalize_url(base_url)
+            logger.debug("url_normalized", extra={"original": request.url, "normalized": base_url})
+            
+            if not is_safe_outbound_url(base_url):
+                logger.warning("unsafe_url_rejected", extra={"url": base_url})
+                raise HTTPException(status_code=400, detail="Unsafe scrape URL")
+
+            # Attempt to detect and correct domain variant (www vs non-www)
+            corrected_url = _detect_correct_domain_variant(base_url)
+            if corrected_url:
+                base_url = corrected_url
+                logger.info("domain_variant_auto_corrected", extra={"original": request.url, "corrected": base_url})
+                span.set_attribute("domain_auto_corrected", True)
+
+            domain = urlparse(base_url).netloc
+            span.set_attribute("domain", domain)
+            span.set_attribute("original_domain", urlparse(request.url).netloc if request.url.startswith(('http://', 'https://')) else "unknown")
+            
+            logger.debug("domain_extracted", extra={"domain": domain})
+            
+            max_pages = max(1, min(request.max_pages or 3000, 10000))
+            urls_to_scrape = [base_url]
+            scraped_urls = set()
+            pages_processed = []
+            new_docs_count = 0
+            failed_pages = 0
+            failed_urls = []
+            section_docs_indexed = 0
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+            }
+
+            if request.use_sitemaps:
+                logger.info("discovering_sitemaps", extra={"url": base_url})
+                sitemap_start = time.time()
+                
+                sitemap_urls = await asyncio.to_thread(
+                    _fetch_sitemap_urls,
+                    base_url,
+                    headers,
+                    domain,
+                    max_urls=max_pages * 3,
                 )
-            else:
-                title, discovered_links, created_count, sections_count = None, [], 0, 0
-            
-            if title:
-                pages_processed.append(title)
-            else:
-                failed_pages += 1
-            if created_count:
-                new_docs_count += created_count
-            section_docs_indexed += sections_count
                 
-            _update_crawl_queue(discovered_links, scraped_urls, urls_to_scrape)
+                sitemap_elapsed = time.time() - sitemap_start
+                logger.info("sitemaps_discovered", extra={
+                    "url": base_url,
+                    "sitemaps_count": len(sitemap_urls),
+                    "discovery_time_seconds": round(sitemap_elapsed, 2)
+                })
+                span.set_attribute("sitemaps_discovered", len(sitemap_urls))
+                
+                for sitemap_url in sitemap_urls:
+                    if sitemap_url not in urls_to_scrape:
+                        urls_to_scrape.append(sitemap_url)
 
-        if new_docs_count > 0:
-            _increment_usage(db, tenant_id, "documents_indexed", amount=new_docs_count)
-
-        db.commit()
-        
-        if not pages_processed:
-            raise HTTPException(status_code=400, detail="No readable content found on the website")
+            existing_docs_by_url = _build_existing_web_doc_map(db, tenant_id)
+            doc_budget = {"remaining": remaining_document_slots(db, tenant_id)}
             
-        return {
-            "status": "success", 
-            "pages_scraped": len(pages_processed),
-            "pages_discovered": len(scraped_urls),
-            "new_pages_indexed": new_docs_count,
-            "failed_pages": failed_pages,
-            "section_docs_indexed": section_docs_indexed,
-            "max_pages": max_pages,
-            "titles": pages_processed[:5]
-        }
+            logger.info("crawl_preparation_complete", extra={
+                "domain": domain,
+                "initial_queue_size": len(urls_to_scrape),
+                "existing_docs": len(existing_docs_by_url),
+                "document_budget": doc_budget["remaining"]
+            })
+            
+            if doc_budget["remaining"] <= 0:
+                logger.error("document_quota_exceeded", extra={
+                    "tenant_id": tenant_id,
+                    "remaining": doc_budget["remaining"]
+                })
+                raise HTTPException(status_code=403, detail="Document quota exceeded for current plan.")
+
+            crawl_start = time.time()
+            while urls_to_scrape and len(scraped_urls) < max_pages:
+                url = urls_to_scrape.pop(0)
+                if url in scraped_urls:
+                    continue
+                
+                progress = len(scraped_urls) + 1
+                logger.info("crawl_item", extra={
+                    "url": url,
+                    "progress": f"{progress}/{max_pages}",
+                    "queue_size": len(urls_to_scrape)
+                })
+                span.set_attribute(f"crawl_page_{progress}_url", url[:100])
+                
+                scraped_urls.add(url)
+                
+                payload_fetch_start = time.time()
+                payload = await asyncio.to_thread(
+                    _fetch_page_payload,
+                    url,
+                    headers,
+                    domain,
+                    request.index_sections,
+                )
+                payload_fetch_elapsed = time.time() - payload_fetch_start
+                
+                if payload:
+                    logger.debug("page_payload_received", extra={
+                        "url": url,
+                        "title": payload.get("title"),
+                        "content_size": len(payload.get("clean_text", "")),
+                        "links_count": len(payload.get("new_links", [])),
+                        "payload_fetch_time": round(payload_fetch_elapsed, 2)
+                    })
+                    
+                    persist_start = time.time()
+                    title, discovered_links, created_count, sections_count = await _persist_page_payload(
+                        payload,
+                        tenant_id,
+                        db,
+                        existing_docs_by_url,
+                        doc_budget,
+                    )
+                    persist_elapsed = time.time() - persist_start
+                    
+                    logger.debug("page_persisted", extra={
+                        "url": url,
+                        "title": title,
+                        "docs_created": created_count,
+                        "sections_indexed": sections_count,
+                        "persist_time": round(persist_elapsed, 2),
+                        "budget_remaining": doc_budget.get("remaining", 0)
+                    })
+                else:
+                    title, discovered_links, created_count, sections_count = None, [], 0, 0
+                    failed_urls.append(url)
+                    logger.warning("page_payload_empty", extra={"url": url})
+                
+                if title:
+                    pages_processed.append(title)
+                else:
+                    failed_pages += 1
+                    
+                if created_count:
+                    new_docs_count += created_count
+                    
+                section_docs_indexed += sections_count
+                    
+                _update_crawl_queue(discovered_links, scraped_urls, urls_to_scrape)
+
+            crawl_elapsed = time.time() - crawl_start
+            
+            if new_docs_count > 0:
+                _increment_usage(db, tenant_id, "documents_indexed", amount=new_docs_count)
+
+            db.commit()
+            
+            logger.info("crawl_completed", extra={
+                "domain": domain,
+                "pages_scraped": len(pages_processed),
+                "pages_failed": failed_pages,
+                "failed_urls": failed_urls if failed_urls else None,
+                "new_docs_indexed": new_docs_count,
+                "section_docs_indexed": section_docs_indexed,
+                "unique_urls_discovered": len(scraped_urls),
+                "crawl_time_seconds": round(crawl_elapsed, 2),
+                "average_page_time": round(crawl_elapsed / max(1, len(scraped_urls)), 2)
+            })
+            
+            span.set_attribute("pages_scraped", len(pages_processed))
+            span.set_attribute("pages_failed", failed_pages)
+            span.set_attribute("new_docs_indexed", new_docs_count)
+            span.set_attribute("section_docs_indexed", section_docs_indexed)
+            span.set_attribute("urls_discovered", len(scraped_urls))
+            
+            if not pages_processed:
+                logger.error("no_readable_content", extra={
+                    "url": base_url,
+                    "domain": domain,
+                    "pages_attempted": len(scraped_urls)
+                })
+                raise HTTPException(status_code=400, detail="No readable content found on the website")
+            
+            total_elapsed = time.time() - scrape_start
+            logger.info("scrape_request_completed", extra={
+                "url": request.url,
+                "tenant_id": tenant_id,
+                "total_time_seconds": round(total_elapsed, 2),
+                "status": "success"
+            })
+            
+            span.set_attribute("total_time_seconds", round(total_elapsed, 2))
+                
+            return {
+                "status": "success", 
+                "pages_scraped": len(pages_processed),
+                "pages_discovered": len(scraped_urls),
+                "new_pages_indexed": new_docs_count,
+                "failed_pages": failed_pages,
+                "section_docs_indexed": section_docs_indexed,
+                "max_pages": max_pages,
+                "titles": pages_processed[:5]
+            }
         
-    except HTTPException:
-        db.rollback()
-        raise
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Network error: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Failed to fetch website: {str(e)}")
-    except Exception as e:
-        logger.error(f"Scraper error: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        except HTTPException as he:
+            logger.info("scrape_request_http_error", extra={
+                "url": request.url,
+                "tenant_id": tenant_id,
+                "status_code": he.status_code,
+                "detail": he.detail
+            })
+            db.rollback()
+            span.set_attribute("http_error_status", he.status_code)
+            raise
+            
+        except requests.exceptions.RequestException as e:
+            total_elapsed = time.time() - scrape_start
+            logger.error("scrape_network_error", extra={
+                "url": request.url,
+                "tenant_id": tenant_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "elapsed_time": round(total_elapsed, 2)
+            })
+            db.rollback()
+            span.set_attribute("error_type", "request_exception")
+            raise HTTPException(status_code=400, detail=f"Failed to fetch website: {str(e)}")
+            
+        except Exception as e:
+            total_elapsed = time.time() - scrape_start
+            logger.error("scrape_unexpected_error", extra={
+                "url": request.url,
+                "tenant_id": tenant_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "elapsed_time": round(total_elapsed, 2)
+            })
+            db.rollback()
+            span.set_attribute("error_type", "generic_exception")
+            span.set_attribute("error_class", type(e).__name__)
+            raise HTTPException(status_code=500, detail=str(e))
