@@ -1,0 +1,56 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Droplet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create archive
+        run: |
+          tar -czf repo.tar.gz --exclude='.git' .
+
+      - name: Copy archive to droplet
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          password: ${{ secrets.DROPLET_SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "repo.tar.gz"
+          target: "/tmp"
+
+      - name: Run remote deploy script
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          password: ${{ secrets.DROPLET_SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            sudo mkdir -p /opt/tcsaasbot
+            sudo rm -rf /opt/tcsaasbot/*
+            sudo tar -xzf /tmp/repo.tar.gz -C /opt/tcsaasbot
+            sudo chown -R ${{ secrets.DROPLET_USER }} /opt/tcsaasbot
+            sudo chmod +x /opt/tcsaasbot/scripts/remote_deploy.sh
+            cat > /opt/tcsaasbot/.env.droplet <<'EOF'
+            APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+            EOF
+            /opt/tcsaasbot/scripts/remote_deploy.sh

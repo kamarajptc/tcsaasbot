@@ -5,9 +5,10 @@ python-dotenv
 openai
 pydantic-settings
 uuid
-langchain
-langchain-openai
-langchain-community
+langchain==0.1.20
+langchain-openai==0.1.7
+langchain-community==0.0.38
+langchain-text-splitters==0.0.2
 beautifulsoup4
 requests
 httpx
@@ -18,6 +19,8 @@ aiomysql
 redis
 alembic
 cryptography
+passlib[bcrypt]
+python-jose[cryptography]
 pypdf
 opentelemetry-api
 opentelemetry-sdk

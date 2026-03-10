@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.droplet
+    environment:
+      ENV: production
+      PORT: 9100
+      QDRANT_PATH: /app/data/qdrant
+      ARTIFACTS_DIR: /app/artifacts
+      STORAGE_BACKEND: local
+      CACHE_BACKEND: redis
+      QUEUE_BACKEND: memory
+      SECRETS_BACKEND: env
+    depends_on:
+      - redis
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - qdrant_data:/app/data/qdrant
+      - artifacts_data:/app/artifacts
+
+  web:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      BACKEND_INTERNAL_URL: http://api:9100/api/v1
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
+  qdrant_data:
+  artifacts_data:

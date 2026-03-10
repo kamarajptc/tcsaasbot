@@ -3,7 +3,7 @@ from typing import List, Optional
 import json
 import ast
 import operator as op
-from langchain.agents import create_openai_functions_agent, AgentExecutor
+from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.tools import Tool, tool
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -197,7 +197,7 @@ class AgentService:
     async def _run_openai_agent(self, input_text: str, tools_list: List[str], prompt_template: str) -> str:
         """Use OpenAI function calling agent."""
         from langchain_openai import ChatOpenAI
-        
+
         tools = []
         for t_name in tools_list:
             if t_name in self.available_tools:
@@ -209,7 +209,7 @@ class AgentService:
                         func=lambda arg, n=t_name: self._invoke_tool(n, arg),
                     )
                 )
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", prompt_template),
             MessagesPlaceholder("chat_history", optional=True),
