@@ -6,49 +6,124 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE_NAME: ${{ github.repository_owner }}/tcsaasbot-api
+  WEB_IMAGE_NAME: ${{ github.repository_owner }}/tcsaasbot-web
+
 jobs:
-  deploy:
-    name: Deploy to Droplet
+  build:
+    name: Build and Push Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create archive
+      - name: Set image tag
+        id: meta
+        run: echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: dashboard/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:latest
+
+  deploy:
+    name: Deploy to Droplet
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create runtime archive
         run: |
           mkdir -p .deploy
-          tar -czf .deploy/repo.tar.gz --exclude='.git' --exclude='.deploy' .
+          tar -czf .deploy/runtime.tar.gz \
+            docker-compose.droplet.yml \
+            scripts/remote_deploy.sh \
+            infra/do/nginx/tcsaasbot.conf.template
 
-      - name: Copy archive to droplet
+      - name: Copy runtime archive to droplet
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           password: ${{ secrets.DROPLET_SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          source: ".deploy/repo.tar.gz"
+          source: ".deploy/runtime.tar.gz"
           target: "/tmp"
 
       - name: Run remote deploy script
         uses: appleboy/ssh-action@master
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           password: ${{ secrets.DROPLET_SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          envs: IMAGE_TAG
           script: |
             set -euo pipefail
-            sudo mkdir -p /opt/tcsaasbot
-            sudo rm -rf /opt/tcsaasbot/*
-            ARCHIVE_PATH=/tmp/repo.tar.gz
-            if [ ! -f "$ARCHIVE_PATH" ] && [ -f /tmp/.deploy/repo.tar.gz ]; then
-              ARCHIVE_PATH=/tmp/.deploy/repo.tar.gz
+
+            if [ "$(id -u)" -eq 0 ]; then
+              SUDO=""
+            elif command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+              SUDO="sudo -n"
+            else
+              echo "Remote deploy requires root or passwordless sudo." >&2
+              exit 1
             fi
-            sudo tar -xzf "$ARCHIVE_PATH" -C /opt/tcsaasbot
-            sudo chown -R ${{ secrets.DROPLET_USER }} /opt/tcsaasbot
-            sudo chmod +x /opt/tcsaasbot/scripts/remote_deploy.sh
-            cat > /opt/tcsaasbot/.env.droplet <<'EOF'
+
+            run_as_root() {
+              if [ -n "$SUDO" ]; then
+                $SUDO "$@"
+              else
+                "$@"
+              fi
+            }
+
+            run_as_root mkdir -p /opt/tcsaasbot/scripts /opt/tcsaasbot/infra/do/nginx
+            ARCHIVE_PATH=/tmp/runtime.tar.gz
+            if [ ! -f "$ARCHIVE_PATH" ] && [ -f /tmp/.deploy/runtime.tar.gz ]; then
+              ARCHIVE_PATH=/tmp/.deploy/runtime.tar.gz
+            fi
+            run_as_root tar -xzf "$ARCHIVE_PATH" -C /opt/tcsaasbot
+            run_as_root chown -R ${{ secrets.DROPLET_USER }} /opt/tcsaasbot
+            run_as_root chmod +x /opt/tcsaasbot/scripts/remote_deploy.sh
+            cat > /opt/tcsaasbot/.env.droplet <<EOF
             APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+            API_IMAGE=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${IMAGE_TAG}
+            WEB_IMAGE=${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:${IMAGE_TAG}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
@@ -58,4 +133,8 @@ jobs:
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
             EOF
+            chmod 600 /opt/tcsaasbot/.env.droplet
+            if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
+              echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            fi
             /opt/tcsaasbot/scripts/remote_deploy.sh

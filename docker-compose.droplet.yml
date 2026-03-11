@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ${API_IMAGE:?set API_IMAGE}
     restart: unless-stopped
     env_file:
       - .env.droplet
@@ -24,9 +22,7 @@ services:
       - artifacts_data:/app/artifacts
 
   web:
-    build:
-      context: .
-      dockerfile: dashboard/Dockerfile
+    image: ${WEB_IMAGE:?set WEB_IMAGE}
     restart: unless-stopped
     environment:
       NODE_ENV: production

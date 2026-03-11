@@ -3,7 +3,11 @@ from typing import List, Optional
 import json
 import ast
 import operator as op
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain.agents import AgentExecutor
+try:
+    from langchain.agents import create_openai_functions_agent as create_compatible_agent
+except ImportError:
+    from langchain.agents import create_tool_calling_agent as create_compatible_agent
 from langchain.tools import Tool, tool
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -222,7 +226,7 @@ class AgentService:
             model="gpt-4o-mini",
             temperature=0,
         )
-        agent = create_openai_functions_agent(openai_llm, tools, prompt)
+        agent = create_compatible_agent(openai_llm, tools, prompt)
         agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
         response = await agent_executor.ainvoke({"input": input_text})
         return response["output"]

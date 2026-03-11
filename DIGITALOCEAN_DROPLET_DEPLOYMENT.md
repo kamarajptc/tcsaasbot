@@ -54,6 +54,8 @@ Set at minimum:
 
 ```bash
 APP_DOMAIN=chat.example.com
+API_IMAGE=ghcr.io/<your-github-user>/tcsaasbot-api:latest
+WEB_IMAGE=ghcr.io/<your-github-user>/tcsaasbot-web:latest
 OPENAI_API_KEY=...
 DATABASE_URL=postgresql+psycopg://doadmin:<password>@db-postgresql-chat-do-user-7825403-0.g.db.ondigitalocean.com:25060/defaultdb?sslmode=require
 SECRET_KEY=<long-random-value>
@@ -72,7 +74,7 @@ chmod +x scripts/remote_deploy.sh
 ```
 
 That script:
-- builds and starts all containers
+- pulls and starts all containers
 - installs/configures Nginx if needed
 - routes `/` to the dashboard and `/api/` to the backend
 
@@ -112,5 +114,10 @@ If you want the existing workflow to deploy automatically, store these repositor
 - `AUTH_PASSWORD`
 - `FRONTEND_URL`
 - `CORS_ORIGINS`
+- `GHCR_USERNAME` (optional for public packages, required for private GHCR images)
+- `GHCR_TOKEN` (optional for public packages, required for private GHCR images)
 
-Then update `.github/workflows/deploy.yml` to write `/opt/tcsaasbot/.env.droplet` instead of `backend/.env`.
+The workflow now:
+- builds and pushes `api` and `web` images to GHCR
+- writes `API_IMAGE` and `WEB_IMAGE` into `/opt/tcsaasbot/.env.droplet`
+- tells the droplet to `docker compose pull` and restart without rebuilding

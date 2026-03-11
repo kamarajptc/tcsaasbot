@@ -1,18 +1,16 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PORT=9100
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential curl \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /app/requirements.txt
+COPY backend/requirements-prod.txt /app/requirements-prod.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /app/requirements-prod.txt
 
 COPY backend/app /app/app
 
