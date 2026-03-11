@@ -81,7 +81,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           password: ${{ secrets.DROPLET_SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: 22
           source: ".deploy/runtime.tar.gz"
           target: "/tmp"
 
@@ -94,7 +94,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           password: ${{ secrets.DROPLET_SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: 22
           envs: IMAGE_TAG,IMAGE_OWNER
           script: |
             set -euo pipefail
