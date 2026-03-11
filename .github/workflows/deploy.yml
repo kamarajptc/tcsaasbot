@@ -8,8 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  API_IMAGE_NAME: ${{ github.repository_owner }}/tcsaasbot-api
-  WEB_IMAGE_NAME: ${{ github.repository_owner }}/tcsaasbot-web
 
 jobs:
   build:
@@ -20,9 +18,14 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
+      image_owner: ${{ steps.owner.outputs.image_owner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Normalize image owner
+        id: owner
+        run: echo "image_owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set image tag
         id: meta
@@ -42,8 +45,8 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
-            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.image_owner }}/tcsaasbot-api:${{ steps.meta.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.image_owner }}/tcsaasbot-api:latest
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -52,8 +55,8 @@ jobs:
           file: dashboard/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
-            ${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.image_owner }}/tcsaasbot-web:${{ steps.meta.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.image_owner }}/tcsaasbot-web:latest
 
   deploy:
     name: Deploy to Droplet
@@ -86,12 +89,13 @@ jobs:
         uses: appleboy/ssh-action@master
         env:
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          IMAGE_OWNER: ${{ needs.build.outputs.image_owner }}
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           password: ${{ secrets.DROPLET_SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: IMAGE_TAG
+          envs: IMAGE_TAG,IMAGE_OWNER
           script: |
             set -euo pipefail
 
@@ -122,8 +126,8 @@ jobs:
             run_as_root chmod +x /opt/tcsaasbot/scripts/remote_deploy.sh
             cat > /opt/tcsaasbot/.env.droplet <<EOF
             APP_DOMAIN=${{ secrets.APP_DOMAIN }}
-            API_IMAGE=${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${IMAGE_TAG}
-            WEB_IMAGE=${{ env.REGISTRY }}/${{ env.WEB_IMAGE_NAME }}:${IMAGE_TAG}
+            API_IMAGE=${{ env.REGISTRY }}/${IMAGE_OWNER}/tcsaasbot-api:${IMAGE_TAG}
+            WEB_IMAGE=${{ env.REGISTRY }}/${IMAGE_OWNER}/tcsaasbot-web:${IMAGE_TAG}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
