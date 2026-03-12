@@ -134,6 +134,8 @@ jobs:
             REDIS_URL=${{ secrets.REDIS_URL }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}
+            DEMO_AUTH_PASSWORD=password123
+            DEMO_TENANT_IDS=ops@tangentcloud.in,ops@dataflo.io,ops@adamsbridge.com,ops@workez.in
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
             EOF

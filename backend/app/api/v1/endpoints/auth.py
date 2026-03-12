@@ -29,7 +29,14 @@ def _validate_credentials(db: Session, username: str, password: str) -> str:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    if not hmac.compare_digest(password, settings.AUTH_PASSWORD):
+    valid_password = hmac.compare_digest(password, settings.AUTH_PASSWORD)
+    if (
+        not valid_password
+        and username in settings.demo_tenant_ids
+        and settings.DEMO_AUTH_PASSWORD
+    ):
+        valid_password = hmac.compare_digest(password, settings.DEMO_AUTH_PASSWORD)
+    if not valid_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
