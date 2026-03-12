@@ -64,6 +64,11 @@ fi
 
 mkdir -p "$ROOT/artifacts" "$ROOT/qdrant_db"
 
+# Free unused Docker artifacts before pulling new images. This keeps
+# routine deploys from failing when the droplet accumulates old layers.
+docker image prune -af >/dev/null || true
+docker builder prune -af >/dev/null || true
+
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down --remove-orphans || true
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
