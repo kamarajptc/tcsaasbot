@@ -65,6 +65,7 @@ fi
 mkdir -p "$ROOT/artifacts" "$ROOT/qdrant_db"
 
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down --remove-orphans || true
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 
 APP_DOMAIN=$(grep '^APP_DOMAIN=' "$ENV_FILE" | head -n1 | cut -d= -f2-)
