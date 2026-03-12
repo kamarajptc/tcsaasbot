@@ -80,7 +80,7 @@ jobs:
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
-          password: ${{ secrets.DROPLET_SSH_PASSWORD }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           source: ".deploy/runtime.tar.gz"
           target: "/tmp"
@@ -93,7 +93,7 @@ jobs:
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
-          password: ${{ secrets.DROPLET_SSH_PASSWORD }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           envs: IMAGE_TAG,IMAGE_OWNER
           script: |
