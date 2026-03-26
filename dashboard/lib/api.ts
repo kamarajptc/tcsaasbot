@@ -5,6 +5,26 @@ const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:9100' : '/api/v1'),
 });
 
+export const isValidToken = (token: string | null): boolean => {
+    if (!token) return false;
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+        const payloadBase64 = parts[1];
+        // Handle unpadded base64 data
+        let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const decodedJson = JSON.parse(globalThis.atob(base64));
+        const exp = decodedJson.exp;
+        if (!exp) return true; // Assumed valid if no expiration
+        return (Date.now() / 1000) < exp;
+    } catch (e) {
+        return false;
+    }
+};
+
 // Request interceptor to add API Key/Token
 api.interceptors.request.use((config) => {
     // In a real app, this would be retrieved from auth state/secure storage
@@ -24,8 +44,18 @@ api.interceptors.response.use(
         if (error.response?.status === 401 || error.response?.status === 403) {
             console.error('Authentication Error: Session expired or invalid API key.');
             if (globalThis.window) {
-                // Optionally redirect to login or clear token
-                // localStorage.removeItem('access_token');
+                const wasLoggedIn = !!localStorage.getItem('access_token');
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('tcsaas_api_key');
+                
+                // Only force a reload if we were previously logged in or not on the landing/onboarding page
+                // to avoid infinite loops on the landing page itself
+                const isAuthPage = window.location.pathname.includes('/onboarding');
+                const isAlreadyLanding = window.location.search.includes('start=landing');
+                
+                if (!isAuthPage && !isAlreadyLanding && wasLoggedIn) {
+                    window.location.href = '/?start=landing';
+                }
             }
         }
         return Promise.reject(error);
@@ -57,8 +87,15 @@ export const dashboardApi = {
     getAnalytics: async () => {
         return api.get('/dashboard/analytics/summary');
     },
-    getConversations: async () => {
-        return api.get('/dashboard/conversations');
+    getConversations: async (params?: { status?: string; q?: string; days_ago?: number; skip?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.status) query.set('status', params.status);
+        if (params?.q) query.set('q', params.q);
+        if (params?.days_ago !== undefined) query.set('days_ago', String(params.days_ago));
+        if (params?.skip !== undefined) query.set('skip', String(params.skip));
+        if (params?.limit !== undefined) query.set('limit', String(params.limit));
+        const suffix = query.toString() ? `?${query.toString()}` : '';
+        return api.get(`/dashboard/conversations${suffix}`);
     },
     createConversation: async (botId: number) => {
         return api.post('/dashboard/conversations', { bot_id: botId });
@@ -150,14 +187,14 @@ export const dashboardApi = {
         return api.post('/billing/checkout', { plan });
     },
     // Analytics API
-    getAnalyticsSummary: async () => {
-        return api.get('/analytics/summary');
+    getAnalyticsSummary: async (days: number = 7) => {
+        return api.get(`/analytics/summary?days=${days}`);
     },
-    getAnalyticsTrends: async () => {
-        return api.get('/analytics/trends');
+    getAnalyticsTrends: async (days: number = 7) => {
+        return api.get(`/analytics/trends?days=${days}`);
     },
-    getBotPerformance: async () => {
-        return api.get('/analytics/bot-performance');
+    getBotPerformance: async (days: number = 7) => {
+        return api.get(`/analytics/bot-performance?days=${days}`);
     },
     getRateLimitSummary: async (windowHours: number = 24) => {
         return api.get(`/analytics/rate-limits/summary?window_hours=${windowHours}`);
@@ -232,9 +269,11 @@ export const dashboardApi = {
     deleteBotFAQ: async (botId: number, faqId: number) => {
         return api.delete(`/dashboard/${botId}/faqs/${faqId}`);
     },
-    getAIPerformance: async (botId?: number) => {
-        const url = botId ? `/analytics/ai-performance?bot_id=${botId}` : '/analytics/ai-performance';
-        return api.get(url);
+    getAIPerformance: async (botId?: number, days: number = 7) => {
+        const query = new URLSearchParams();
+        if (botId) query.set('bot_id', String(botId));
+        query.set('days', String(days));
+        return api.get(`/analytics/ai-performance?${query.toString()}`);
     },
     getFaqSuggestions: async (botId?: number, limit: number = 10) => {
         const params = new URLSearchParams();
@@ -353,5 +392,21 @@ export const dashboardApi = {
     },
     getSecurityChecklist: async () => {
         return api.get('/quality/security/checklist');
+    },
+    // Admin Tenant & Plan Management
+    getAdminTenants: async () => {
+        return api.get('/admin/tenants');
+    },
+    createTenant: async (data: { name: string; id: string; plan: string }) => {
+        return api.post('/admin/tenants', data);
+    },
+    updateTenantPlan: async (tenantId: string, plan: string) => {
+        return api.put(`/admin/tenants/${tenantId}/plan`, { plan });
+    },
+    getAdminPlans: async () => {
+        return api.get('/admin/plans');
+    },
+    updatePlanLimits: async (planName: string, data: { message_limit: number; document_limit: number; bot_limit: number }) => {
+        return api.put(`/admin/plans/${planName}`, data);
     }
 };

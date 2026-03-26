@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { CHATBOT_TEMPLATES, BotTemplate } from '@/lib/templates';
 import { Bot, Shield, ArrowRight, CheckCircle2, MessageSquare, Globe, Layout, Sparkles, Target, Activity, ChevronDown, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { dashboardApi } from '@/lib/api';
+import { dashboardApi, isValidToken } from '@/lib/api';
 
 interface LandingPageProps {
     readonly onGetStarted: () => void;
@@ -14,6 +15,11 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
     const [openFaqId, setOpenFaqId] = useState('faq-1');
     const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        setIsAuthenticated(isValidToken(localStorage.getItem('access_token')));
+    }, []);
     const [roiInputs, setRoiInputs] = useState({
         monthlyVisitors: 10000,
         currentLeadRate: 2,
@@ -67,44 +73,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         }
     ];
 
-    const templates = [
-        {
-            id: 't1',
-            name: 'Support Assistant',
-            audience: 'SaaS and product teams',
-            preview: 'Answer docs questions, collect tickets, and route users instantly.',
-            convo: [
-                'User: How do I reset my workspace password?',
-                'Bot: Go to Settings > Security > Reset Password. I can guide you step-by-step.',
-                'User: Can you email these instructions?',
-                'Bot: Yes. Share your work email and I will send it now.'
-            ]
-        },
-        {
-            id: 't2',
-            name: 'Lead Qualifier',
-            audience: 'Agencies and consultants',
-            preview: 'Capture contact details, qualify intent, and sync to CRM in real time.',
-            convo: [
-                'User: I need help with SEO for my e-commerce store.',
-                'Bot: Great. What is your monthly traffic right now?',
-                'User: Around 80k sessions.',
-                'Bot: Perfect. Based on that, I can connect you to our growth specialist.'
-            ]
-        },
-        {
-            id: 't3',
-            name: 'Ecommerce Guide',
-            audience: 'Retail and D2C brands',
-            preview: 'Recommend products, handle FAQs, and recover buying hesitation.',
-            convo: [
-                'User: I want running shoes for flat feet.',
-                'Bot: I recommend our Stability Pro series in wide fit. Want top picks under $150?',
-                'User: Yes.',
-                'Bot: Great choice. Here are 3 high-rated options with size availability.'
-            ]
-        }
-    ];
+    const templates: BotTemplate[] = CHATBOT_TEMPLATES;
 
     const launchFlow = [
         { id: 's1', step: 'Connect your website and docs', note: 'Import URLs, PDFs, and help center pages.' },
@@ -112,7 +81,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         { id: 's3', step: 'Go live and optimize conversions', note: 'Track chats, leads, and outcome quality from one dashboard.' }
     ];
 
-    const trustBrands = ['TangentCloud', 'Adamsbridge', 'dataflo', 'WorkEZ'];
+    const trustBrands = ['Tangent Cloud', 'Adamsbridge', 'dataflo', 'WorkEZ'];
 
     const pricingTiers = [
         {
@@ -163,6 +132,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     ];
 
     const goToOnboarding = (templateId?: string) => {
+        if (!isAuthenticated) {
+            setShowSignUp(true);
+            return;
+        }
         if (templateId) {
             router.push(`/onboarding?template=${templateId}`);
             return;
@@ -170,7 +143,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         router.push('/onboarding');
     };
 
-    const selectedTemplate = templates.find((template) => template.id === activeTemplateId);
+    const selectedTemplate = templates.find((template: BotTemplate) => template.id === activeTemplateId);
     const currentMonthlyLeads = Math.round((roiInputs.monthlyVisitors * roiInputs.currentLeadRate) / 100);
     const improvedMonthlyLeads = Math.round((roiInputs.monthlyVisitors * roiInputs.improvedLeadRate) / 100);
     const additionalLeads = Math.max(0, improvedMonthlyLeads - currentMonthlyLeads);
@@ -184,7 +157,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     const [isLoading, setIsLoading] = useState(false);
 
     const TEST_CREDENTIALS = [
-        { role: 'TangentCloud Admin', email: 'ops@tangentcloud.in', desc: 'AI SaaS platform bot operations' },
+        { role: 'Tangent Cloud Admin', email: 'ops@tangentcloud.in', desc: 'AI SaaS platform bot operations' },
         { role: 'dataflo Ops', email: 'ops@dataflo.io', desc: 'No-code data automation support' },
         { role: 'Adamsbridge IAM', email: 'ops@adamsbridge.com', desc: 'Identity and process knowledge assistant' },
         { role: 'WorkEZ HR Ops', email: 'ops@workez.in', desc: 'HRMS and workspace operations assistant' },
@@ -253,10 +226,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/70 backdrop-blur-2xl border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
-                        <div className="w-10 h-10 bg-gray-900 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-200">
-                            <Bot className="text-white w-6 h-6" />
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-gray-100 p-1">
+                            <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
                         </div>
-                        <span className="text-2xl font-black text-gray-900 tracking-tighter">TangentCloud AI Bots</span>
+                        <span className="text-2xl font-black text-gray-900 tracking-tighter">Tangent Cloud</span>
                     </div>
                     <div className="hidden lg:flex items-center gap-10 text-[11px] font-black uppercase tracking-widest text-gray-400">
                         <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-blue-600 transition-colors uppercase">Technology</button>
@@ -280,7 +253,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
             {/* Auth Modals */}
             {(showSignIn || showSignUp || showForgot) && (
-                <div className="fixed inset-0 z-[150] bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[150] bg-blue-600/60 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-4xl shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 flex gap-10">
 
                         {/* Left Side: Form */}
@@ -318,7 +291,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                                             placeholder="name@company.com"
                                         />
                                     </div>
-                                    <button type="submit" disabled={isLoading} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 disabled:opacity-70 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={isLoading} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-70 disabled:cursor-not-allowed">
                                         {isLoading ? 'Sending...' : 'Send Recovery Link'}
                                     </button>
                                     <button type="button" onClick={() => { setShowForgot(false); setShowSignIn(true); }} className="w-full py-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors">
@@ -362,7 +335,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
                                     <div className="pt-4 text-center">
                                         <p className="text-sm font-medium text-gray-500">
-                                            {showSignUp ? 'Already have an account?' : 'New to TangentCloud?'}
+                                            {showSignUp ? 'Already have an account?' : 'New to Tangent Cloud?'}
                                             <button
                                                 type="button"
                                                 onClick={() => { setShowSignUp(!showSignUp); setShowSignIn(!showSignIn); }}
@@ -430,7 +403,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
                         <button
                             onClick={() => goToOnboarding()}
-                            className="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-3xl font-black text-lg shadow-2xl shadow-gray-300 hover:bg-black hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                            className="w-full sm:w-auto px-10 py-5 bg-blue-600 text-white rounded-3xl font-black text-lg shadow-2xl shadow-gray-300 hover:bg-indigo-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2 group"
                         >
                             Build Your Free Agent <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                         </button>
@@ -451,7 +424,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                                     <div className="w-16 h-1 bg-blue-600 rounded-full" />
                                     <h3 className="text-4xl font-black text-gray-900 tracking-tight">Deploy anywhere. <br />Customize everything.</h3>
                                     <p className="text-gray-500 font-medium leading-relaxed">
-                                        Unlike generic chatbots, TangentCloud AI Bots gives you full control over the visual DNA and behavioral persona of your AI agents.
+                                        Unlike generic chatbots, Tangent Cloud AI Bots gives you full control over the visual DNA and behavioral persona of your AI agents.
                                         Choose specialized positions, custom avatars, and engagement-focused proactive greetings.
                                     </p>
                                     <div className="space-y-3">
@@ -549,24 +522,26 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                         </p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {templates.map((template) => (
+                        {templates.map((template: BotTemplate) => (
                             <div key={template.id} className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all">
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-4">{template.audience}</p>
                                 <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-4">{template.name}</h3>
                                 <p className="text-sm text-gray-500 font-medium leading-relaxed mb-8">{template.preview}</p>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className={`grid ${isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
                                     <button
                                         onClick={() => setActiveTemplateId(template.id)}
                                         className="w-full py-3 rounded-2xl bg-white border border-gray-200 text-gray-900 text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-colors"
                                     >
                                         Preview
                                     </button>
-                                    <button
-                                        onClick={() => goToOnboarding(template.id)}
-                                        className="w-full py-3 rounded-2xl bg-gray-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-colors"
-                                    >
-                                        Use Template
-                                    </button>
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={() => goToOnboarding(template.id)}
+                                            className="w-full py-3 rounded-2xl bg-blue-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors"
+                                        >
+                                            Use Template
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -585,7 +560,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                         </p>
                         <button
                             onClick={() => goToOnboarding()}
-                            className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-colors"
+                            className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-xl shadow-blue-100"
                         >
                             Launch My Bot
                         </button>
@@ -600,7 +575,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                             <input type="range" min={0.5} max={10} step={0.1} value={roiInputs.currentLeadRate} onChange={(e) => setRoiInputs((prev) => ({ ...prev, currentLeadRate: Number(e.target.value) }))} className="w-full" />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Lead Rate With TangentCloud AI Bots: {roiInputs.improvedLeadRate}%</label>
+                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Lead Rate With Tangent Cloud AI Bots: {roiInputs.improvedLeadRate}%</label>
                             <input type="range" min={1} max={20} step={0.1} value={roiInputs.improvedLeadRate} onChange={(e) => setRoiInputs((prev) => ({ ...prev, improvedLeadRate: Number(e.target.value) }))} className="w-full" />
                         </div>
                         <div className="space-y-2">
@@ -670,7 +645,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-end">
                         {pricingTiers.map((tier) => (
-                            <div key={tier.name} className={`p-12 rounded-[3.5rem] transition-all relative group ${tier.highlighted ? 'bg-gray-900 text-white shadow-3xl shadow-gray-200 scale-105' : 'bg-white border-2 border-gray-100 hover:border-blue-100'
+                            <div key={tier.name} className={`p-12 rounded-[3.5rem] transition-all relative group ${tier.highlighted ? 'bg-blue-600 text-white shadow-3xl shadow-blue-200 scale-105' : 'bg-white border-2 border-gray-100 hover:border-blue-100'
                                 }`}>
                                 {tier.highlighted && (
                                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-200">
@@ -766,7 +741,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     <div className="text-center">
                         <button
                             onClick={() => goToOnboarding()}
-                            className="px-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-colors"
+                            className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-2xl shadow-blue-200"
                         >
                             Start Building Free
                         </button>
@@ -779,10 +754,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 <div className="max-w-7xl mx-auto px-8 flex flex-col lg:flex-row justify-between items-center gap-12">
                     <div className="space-y-4 text-center lg:text-left">
                         <div className="flex items-center justify-center lg:justify-start gap-3">
-                            <div className="w-10 h-10 bg-gray-900 rounded-2xl flex items-center justify-center">
-                                <Bot className="text-white w-6 h-6" />
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-gray-100 p-1">
+                                <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            <span className="text-2xl font-black text-gray-900 tracking-tighter">TangentCloud AI Bots</span>
+                            <span className="text-2xl font-black text-gray-900 tracking-tighter">Tangent Cloud</span>
                         </div>
                         <p className="text-gray-400 text-sm font-medium max-w-xs">
                             The world’s most advanced AI agent orchestration platform.
@@ -791,12 +766,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     </div>
                     <div className="flex flex-col md:flex-row gap-12 items-center">
                         <div className="flex flex-col gap-3 font-black text-[10px] uppercase tracking-widest text-gray-400">
-                            <button type="button" className="text-left hover:text-blue-600">Architecture</button>
-                            <button type="button" className="text-left hover:text-blue-600">Privacy Policy</button>
-                            <button type="button" className="text-left hover:text-blue-600">Security SLA</button>
+                            <button type="button" onClick={() => router.push('/architecture')} className="text-left hover:text-blue-600 transition-colors">Architecture</button>
+                            <button type="button" onClick={() => router.push('/privacy')} className="text-left hover:text-blue-600 transition-colors">Privacy Policy</button>
+                            <button type="button" onClick={() => router.push('/security-sla')} className="text-left hover:text-blue-600 transition-colors">Security SLA</button>
                         </div>
                         <div className="text-center lg:text-right space-y-2">
-                            <p className="text-gray-400 text-sm font-bold">© 2026 TangentCloud Technologies Inc.</p>
+                            <p className="text-gray-400 text-sm font-bold">© 2026 Tangent Cloud Technologies Inc.</p>
                             <div className="flex items-center justify-center lg:justify-end gap-2 text-xs font-black text-gray-900">
                                 <Shield className="w-4 h-4 text-blue-600" /> Enterprise Secured
                             </div>
@@ -817,7 +792,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
             {/* Template Preview Modal */}
             {selectedTemplate && (
-                <div className="fixed inset-0 z-[140] bg-gray-900/40 backdrop-blur-sm p-4 flex items-center justify-center">
+                <div className="fixed inset-0 z-[140] bg-blue-600/40 backdrop-blur-sm p-4 flex items-center justify-center">
                     <div className="w-full max-w-2xl bg-white rounded-[2rem] border border-gray-100 shadow-2xl p-8 space-y-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
@@ -833,7 +808,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                             </button>
                         </div>
                         <div className="rounded-3xl bg-gray-50 border border-gray-100 p-5 space-y-3">
-                            {selectedTemplate.convo.map((line) => (
+                            {selectedTemplate.convo.map((line: string) => (
                                 <p key={line} className="text-sm font-medium text-gray-700 leading-relaxed">{line}</p>
                             ))}
                         </div>
@@ -848,7 +823,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                             <button
                                 type="button"
                                 onClick={() => goToOnboarding(selectedTemplate.id)}
-                                className="w-full py-3 rounded-2xl bg-gray-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-colors"
+                                className="w-full py-3 rounded-2xl bg-blue-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-blue-100"
                             >
                                 Use This Template
                             </button>

@@ -11,14 +11,16 @@ import { LandingPage } from '@/components/LandingPage';
 import { KnowledgeAudit } from '@/components/KnowledgeAudit';
 import { QualityCenter } from '@/components/QualityCenter';
 import { CustomersRealtimeReport } from '@/components/CustomersRealtimeReport';
+import { AdminPlansDashboard } from '@/components/AdminPlansDashboard';
 import { ONBOARDING_BANNER_DISMISSED_KEY } from '@/lib/uiFlags';
-import { dashboardApi } from '@/lib/api';
+import { dashboardApi, isValidToken } from '@/lib/api';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Bot, Book, MessageSquare, Settings as SettingsIcon,
   LayoutDashboard, ExternalLink, Plus, Rocket,
   ShieldCheck, Bell, Users, BarChart3,
-  X, LogOut, ChevronRight, Sparkles, Activity, BrainCircuit
+  X, LogOut, ChevronRight, Sparkles, Activity, BrainCircuit,
+  Menu
 } from 'lucide-react';
 import { AIReport } from '@/components/AIReport';
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
@@ -31,7 +33,7 @@ function DashboardPageContent() {
   const requestedView = searchParams.get('view');
   const requestedEditBotIdParam = searchParams.get('editBotId');
   const onboardedFlag = searchParams.get('onboarded') === '1';
-  const validViews = ['dashboard', 'bots', 'knowledge', 'conversations', 'settings', 'leads', 'analytics', 'ai-reports', 'audit', 'quality', 'customers-realtime'] as const;
+  const validViews = ['dashboard', 'bots', 'knowledge', 'conversations', 'settings', 'leads', 'analytics', 'ai-reports', 'audit', 'quality', 'customers-realtime', 'client-plans', 'embed-test'] as const;
   type DashboardView = (typeof validViews)[number];
 
   const isValidView = (value: string): value is DashboardView => {
@@ -50,14 +52,22 @@ function DashboardPageContent() {
   const startInDashboard = searchParams.get('start') === 'dashboard';
 
   const [view, setView] = useState<DashboardView>(initialView);
-  const [isLanding, setIsLanding] = useState(!startInDashboard);
+  const [isLanding, setIsLanding] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const token = localStorage.getItem('access_token');
+    return !isValidToken(token);
+  });
   const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (globalThis.window === undefined) return false;
     return globalThis.localStorage.getItem(ONBOARDING_BANNER_DISMISSED_KEY) === '1';
   });
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [initCreateNonce, setInitCreateNonce] = useState(0);
+  const isAdmin = useMemo(() => {
+    return userEmail?.toLowerCase().trim() === 'ops@tangentcloud.in';
+  }, [userEmail]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<Array<{
     id: string;
@@ -71,9 +81,17 @@ function DashboardPageContent() {
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (globalThis.window !== undefined) {
       const storedEmail = localStorage.getItem('tcsaas_api_key');
+      const token = localStorage.getItem('access_token');
+      
       setUserEmail(storedEmail);
+      
+      if (!isLanding && !isValidToken(token)) {
+        setIsLanding(true);
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('tcsaas_api_key');
+      }
     }
   }, [isLanding]);
 
@@ -81,21 +99,38 @@ function DashboardPageContent() {
   const unreadNotifications = useMemo(() => notifications.filter((item) => item.unread).length, [notifications]);
 
 
+  // Cleaning up URL params after consume
   useEffect(() => {
-    if (!requestedEditBotIdParam) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('editBotId');
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  }, [requestedEditBotIdParam, searchParams, router, pathname]);
+    if (!requestedEditBotIdParam && !onboardedFlag) return;
+    
+    // We only clean once manually to avoid frequent re-runs and flickering
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      let changed = false;
+      if (requestedEditBotIdParam) {
+        params.delete('editBotId');
+        changed = true;
+      }
+      if (onboardedFlag) {
+        params.delete('onboarded');
+        changed = true;
+      }
+      
+      if (changed) {
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname);
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [requestedEditBotIdParam, onboardedFlag, searchParams, router, pathname]);
 
+  // Strict Security: Redirect non-admins away from admin views
   useEffect(() => {
-    if (!onboardedFlag) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('onboarded');
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  }, [onboardedFlag, searchParams, router, pathname]);
+    if (userEmail && !isAdmin && view === 'client-plans') {
+      setView('dashboard');
+    }
+  }, [isAdmin, userEmail, view]);
 
   const dismissOnboardingBanner = () => {
     globalThis.localStorage.setItem(ONBOARDING_BANNER_DISMISSED_KEY, '1');
@@ -205,14 +240,17 @@ function DashboardPageContent() {
       case 'audit': return 'Knowledge Audit';
       case 'quality': return 'Quality Command Center';
       case 'customers-realtime': return 'Customers Real-Time';
+      case 'client-plans': return 'Enterprise Policy Terminal';
+      case 'embed-test': return 'Embed Script Tester';
       default: return 'Nexus';
     }
   };
 
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', group: 'Core' },
+    { id: 'knowledge', icon: Book, label: 'Core Intelligence', group: 'Core' },
+    { id: 'client-plans', icon: ShieldCheck, label: 'Client Plans', group: 'Admin' },
     { id: 'bots', icon: Bot, label: 'Agents', group: 'Management' },
-    { id: 'knowledge', icon: Book, label: 'Intelligence', group: 'Management' },
     { id: 'conversations', icon: MessageSquare, label: 'Transactions', group: 'Management' },
     { id: 'analytics', icon: BarChart3, label: 'Analytics', group: 'Management' },
     { id: 'customers-realtime', icon: Activity, label: 'Customers RT', group: 'Management' },
@@ -221,32 +259,57 @@ function DashboardPageContent() {
     { id: 'quality', icon: Activity, label: 'Quality', group: 'System' },
     { id: 'leads', icon: Users, label: 'Pipeline', group: 'Management' },
     { id: 'settings', icon: SettingsIcon, label: 'Parameters', group: 'System' },
+    { id: 'embed-test', icon: Rocket, label: 'Embed Test', group: 'System' },
   ];
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.id === 'client-plans') return isAdmin;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-blue-100 selection:text-blue-700">
       {/* Premium Sidebar */}
-      <aside className="w-72 bg-white border-r border-gray-100 hidden lg:flex flex-col fixed h-full z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      <aside className="w-72 bg-white border-r border-gray-100 flex flex-col fixed h-full z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div className="p-8 h-24 flex items-center">
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:rotate-12 transition-transform duration-500">
-              <Rocket className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-gray-100 group-hover:scale-105 transition-transform duration-500 p-1">
+              <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-black text-2xl tracking-tighter text-gray-900 group-hover:tracking-normal transition-all duration-500">TangentCloud<span className="text-blue-600 text-3xl leading-none">.</span></span>
+            <span className="font-black text-2xl tracking-tighter text-gray-900 group-hover:tracking-normal transition-all duration-500">Tangent Cloud</span>
           </div>
         </div>
 
         <nav className="flex-1 px-4 space-y-8 overflow-y-auto no-scrollbar py-4">
-          {['Core', 'Management', 'System'].map((group) => (
-            <div key={group}>
-              <p className="text-[10px] uppercase font-black text-gray-400 px-5 mb-4 tracking-[0.2em]">{group}</p>
-              <div className="space-y-1">
-                {menuItems.filter(item => item.group === group).map(item => (
+          {(isAdmin ? ['Admin', 'Core', 'Management', 'System'] : ['Core', 'Management', 'System']).map((group) => {
+            const items = filteredMenuItems.filter(item => item.group === group);
+            if (items.length === 0) return null;
+            return (
+              <div key={group}>
+                <p className="text-[10px] uppercase font-black text-gray-400 px-5 mb-4 tracking-[0.2em]">{group}</p>
+                <div className="space-y-1">
+                  {group === 'Admin' && isAdmin && items.filter(i => i.id === 'client-plans').map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setView('client-plans')}
+                      className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 group ${view === 'client-plans'
+                        ? 'bg-blue-600 text-white shadow-2xl shadow-blue-200 translate-x-1'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <item.icon className={`w-5 h-5 ${view === 'client-plans' ? 'text-blue-400' : 'text-gray-400 group-hover:text-gray-900'} transition-colors`} />
+                        <span className="text-sm">{item.label}</span>
+                      </div>
+                      {view === 'client-plans' && <ChevronRight className="w-4 h-4 text-gray-600" />}
+                    </button>
+                  ))}
+                  {items.filter(i => i.id !== 'client-plans').map(item => (
                   <button
                     key={item.id}
                     onClick={() => setView(item.id as any)}
                     className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 group ${view === item.id
-                      ? 'bg-gray-900 text-white shadow-2xl shadow-gray-200 translate-x-1'
+                      ? 'bg-blue-600 text-white shadow-2xl shadow-blue-200 translate-x-1'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                   >
@@ -257,13 +320,14 @@ function DashboardPageContent() {
                     {view === item.id && <ChevronRight className="w-4 h-4 text-gray-600" />}
                   </button>
                 ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="p-6 mt-auto">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-6 text-white relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white relative overflow-hidden group">
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
@@ -274,7 +338,10 @@ function DashboardPageContent() {
                   <p className="text-xs font-bold">Unlimited Agents</p>
                 </div>
               </div>
-              <button className="w-full py-2.5 bg-white text-gray-900 rounded-xl text-xs font-black shadow-xl hover:-translate-y-1 transition-all">
+              <button 
+                onClick={() => setView('client-plans')}
+                className="w-full py-2.5 bg-white text-gray-900 rounded-xl text-xs font-black shadow-xl hover:-translate-y-1 transition-all active:scale-95"
+              >
                 Upgrade Node
               </button>
             </div>
@@ -299,7 +366,7 @@ function DashboardPageContent() {
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
-              <span className="absolute -top-8 right-0 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-bold uppercase tracking-widest whitespace-nowrap">
+              <span className="absolute -top-8 right-0 bg-blue-600 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-bold uppercase tracking-widest whitespace-nowrap">
                 Sign Out
               </span>
             </button>
@@ -307,16 +374,85 @@ function DashboardPageContent() {
 
         </div>
       </aside>
+      
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-sm lg:hidden animate-in fade-in duration-300"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl transform transition-transform duration-300 lg:hidden flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-8 h-24 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
+              <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-black text-xl tracking-tighter text-gray-900">Tangent Cloud</span>
+          </div>
+          <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-gray-400 hover:text-gray-900">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <nav className="flex-1 px-4 space-y-8 overflow-y-auto no-scrollbar py-4">
+          {(isAdmin ? ['Admin', 'Core', 'Management', 'System'] : ['Core', 'Management', 'System']).map((group) => {
+            const items = filteredMenuItems.filter(item => item.group === group);
+            if (items.length === 0) return null;
+            return (
+              <div key={group}>
+                <p className="text-[10px] uppercase font-black text-gray-400 px-5 mb-4 tracking-[0.2em]">{group}</p>
+                <div className="space-y-1">
+                  {group === 'Admin' && isAdmin && items.filter(i => i.id === 'client-plans').map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => { setView('client-plans'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 ${view === 'client-plans' ? 'bg-blue-600 text-white shadow-xl' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <item.icon className={`w-5 h-5 ${view === 'client-plans' ? 'text-blue-400' : 'text-gray-400'}`} />
+                        <span className="text-sm">{item.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                  {items.filter(i => i.id !== 'client-plans').map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => { setView(item.id as any); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 ${view === item.id ? 'bg-blue-600 text-white shadow-xl' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <item.icon className={`w-5 h-5 ${view === item.id ? 'text-blue-400' : 'text-gray-400'}`} />
+                        <span className="text-sm">{item.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
 
       {/* Main Content Area */}
       <main className="flex-1 lg:ml-72 flex flex-col min-h-screen">
-        <header className="h-24 bg-white/70 backdrop-blur-2xl border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-20">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">{getTitle()}</h1>
-              <div className="px-2.5 py-1 bg-green-50 rounded-lg text-[9px] font-black text-green-600 border border-green-100 uppercase tracking-widest">Local-9100</div>
+        <header className="h-24 bg-white/70 backdrop-blur-2xl border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 sticky top-0 z-20">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight">{getTitle()}</h1>
+                <div className="px-2.5 py-1 bg-green-50 rounded-lg text-[9px] font-black text-green-600 border border-green-100 uppercase tracking-widest">Local-9100</div>
+                {isAdmin && <div className="px-2.5 py-1 bg-blue-50 rounded-lg text-[9px] font-black text-blue-600 border border-blue-100 uppercase tracking-widest flex items-center gap-1.5 shadow-sm shadow-blue-100 animate-in fade-in slide-in-from-left-2 transition-all"><ShieldCheck className="w-3 h-3 text-blue-500" /> Root Admin</div>}
+              </div>
+              <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest mt-1">Operational Environment: {isAdmin ? `Unified Policy Control [Admin: ${userEmail}]` : `Production Ready [User: ${userEmail}]`}</p>
             </div>
-            <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest mt-1">Operational Environment: Production Ready</p>
           </div>
 
           <div className="flex items-center gap-8">
@@ -346,7 +482,7 @@ function DashboardPageContent() {
                 )}
               </button>
               {notificationsOpen && (
-                <div className="absolute right-44 top-20 w-[28rem] max-h-[28rem] overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-2xl shadow-gray-200/60 animate-in slide-in-from-top-2 fade-in duration-200 z-40">
+                <div className="absolute right-44 top-20 w-[28rem] max-h-[28rem] overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-2xl shadow-blue-200/60 animate-in slide-in-from-top-2 fade-in duration-200 z-40">
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-black text-gray-900">Notification Stream</p>
@@ -391,7 +527,7 @@ function DashboardPageContent() {
               )}
               <button
                 onClick={handleInitAgent}
-                className="flex items-center gap-3 px-6 py-3 bg-gray-900 text-white rounded-[1.25rem] text-xs font-black hover:bg-blue-600 hover:-translate-y-1 transition-all active:scale-95 shadow-2xl shadow-gray-200 micro-press"
+                className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-[1.25rem] text-xs font-black hover:bg-indigo-600 hover:-translate-y-1 transition-all active:scale-95 shadow-2xl shadow-blue-100 micro-press"
                 type="button"
               >
                 <Plus className="w-4 h-4" />
@@ -422,7 +558,7 @@ function DashboardPageContent() {
           {view === 'dashboard' && (
             <div className="space-y-12 animate-in fade-in duration-700 micro-view-shell">
               {/* Hero Banner */}
-              <div className="relative overflow-hidden bg-white ring-1 ring-gray-100 rounded-[3rem] p-12 shadow-2xl shadow-gray-200/50 group">
+              <div className="relative overflow-hidden bg-white ring-1 ring-gray-100 rounded-[3rem] p-12 shadow-2xl shadow-blue-200/50 group">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-12">
                   <div className="max-w-xl space-y-6">
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">
@@ -433,7 +569,7 @@ function DashboardPageContent() {
                       Global latency is holding steady at <span className="text-blue-600 font-black tracking-tight">142ms</span>.
                     </p>
                     <div className="flex gap-4 pt-4">
-                      <button onClick={() => setView('bots')} className="px-8 py-4 bg-gray-900 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-gray-300 hover:bg-blue-600 hover:-translate-y-1 transition-all active:scale-95">Command Center</button>
+                      <button onClick={() => setView('bots')} className="px-8 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-indigo-600 hover:-translate-y-1 transition-all active:scale-95">Command Center</button>
                       <button onClick={() => setView('knowledge')} className="px-8 py-4 bg-white text-gray-900 border border-gray-100 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center gap-2">
                         Update Intel <ChevronRight className="w-4 h-4" />
                       </button>
@@ -458,7 +594,7 @@ function DashboardPageContent() {
               <Stats />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-xl shadow-gray-200/30">
+                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-xl shadow-blue-200/30">
                   <div className="flex justify-between items-center mb-10">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-inner border border-blue-100">
@@ -486,7 +622,7 @@ function DashboardPageContent() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-xl shadow-gray-200/30">
+                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-xl shadow-blue-200/30">
                   <div className="flex justify-between items-center mb-10">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shadow-inner border border-indigo-100">
@@ -574,6 +710,20 @@ function DashboardPageContent() {
           {view === 'customers-realtime' && (
             <div className="animate-in slide-in-from-bottom-6 duration-700 micro-view-shell">
               <CustomersRealtimeReport />
+            </div>
+          )}
+          {view === 'client-plans' && (
+            <div className="animate-in slide-in-from-bottom-6 duration-700 micro-view-shell">
+              {isAdmin ? <AdminPlansDashboard /> : <Stats />}
+            </div>
+          )}
+          {view === 'embed-test' && (
+            <div className="h-[calc(100vh-160px)] w-full rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-2xl bg-white animate-in slide-in-from-bottom-6 duration-700">
+              <iframe 
+                src="/test_embed_manual.html" 
+                className="w-full h-full border-none"
+                title="Embed Tester"
+              />
             </div>
           )}
         </div>

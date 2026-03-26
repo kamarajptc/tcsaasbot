@@ -26,16 +26,16 @@ def setup_telemetry(app):
     console_processor = BatchSpanProcessor(ConsoleSpanExporter())
     provider.add_span_processor(console_processor)
 
-    # Add OTLP exporter if running in an environment that supports it (e.g., Docker)
-    # This won't crash if it fails, but will log errors in the background
-    try:
-        otlp_exporter = OTLPSpanExporter()
-        otlp_processor = BatchSpanProcessor(otlp_exporter)
-        provider.add_span_processor(otlp_processor)
-        logger.info("telemetry_otlp_enabled")
-    except Exception:
-        # Silently skip OTLP if GRPC/Collector is not available locally
-        logger.info("telemetry_otlp_skipped", extra={"reason": "OTLP exporter not available"})
+    # Add OTLP exporter only in production to avoid gRPC connection errors in development
+    if os.getenv("ENV") == "production":
+        try:
+            otlp_exporter = OTLPSpanExporter()
+            otlp_processor = BatchSpanProcessor(otlp_exporter)
+            provider.add_span_processor(otlp_processor)
+            logger.info("telemetry_otlp_enabled")
+        except Exception:
+            # Silently skip OTLP if GRPC/Collector is not available
+            logger.info("telemetry_otlp_skipped", extra={"reason": "OTLP exporter initialization failed"})
 
     trace.set_tracer_provider(provider)
 

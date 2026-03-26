@@ -47,6 +47,7 @@ class MessageDB(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=True) # Will be made mandatory in next phase
     conversation_id = Column(Integer, ForeignKey("conversations.id"), index=True)
     sender = Column(String) # 'user' or 'bot'
     agent_id = Column(String, index=True, nullable=True)  # set when sender='agent'
@@ -179,6 +180,17 @@ class EmailSettingsDB(Base):
     is_enabled = Column(Boolean, default=False)
 
 
+class PlanLimitsDB(Base):
+    __tablename__ = "plan_limits"
+
+    plan = Column(String, primary_key=True, index=True) # starter, pro, enterprise
+    message_limit = Column(Integer, nullable=False)
+    document_limit = Column(Integer, nullable=False)
+    bot_limit = Column(Integer, nullable=False) # Number of bots allowed
+    throttling_rpm = Column(Integer, default=60) # Default RPM
+    updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
 class StripeEventDB(Base):
     __tablename__ = "stripe_events"
     event_id = Column(String, primary_key=True, index=True)
@@ -246,10 +258,187 @@ def init_db():
         try:
             conn.execute(text("ALTER TABLE bots ADD COLUMN response_mode VARCHAR(40) DEFAULT 'knowledge_plus_reasoning'"))
         except Exception:
-            # Column already exists or backend does not support this migration path.
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN welcome_message VARCHAR(255) DEFAULT 'Welcome to TangentCloud. Ask me anything.'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN primary_color VARCHAR(20) DEFAULT '#2563eb'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN avatar_url VARCHAR(255)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN position VARCHAR(20) DEFAULT 'right'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN placeholder_text VARCHAR(100) DEFAULT 'Type a message...'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN bubble_greeting VARCHAR(100)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN tools JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN flow_data JSONB DEFAULT '{}'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN enabled_flows JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN rich_messages_enabled BOOLEAN DEFAULT true"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN quick_replies JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN canned_responses JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN greeting_enabled BOOLEAN DEFAULT true"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN greeting_message VARCHAR(500)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN faq_enabled BOOLEAN DEFAULT true"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN custom_answers JSONB DEFAULT '{}'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN agent_transfer_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN agent_email VARCHAR(255)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN agent_webhook VARCHAR(500)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN transfer_trigger_keywords JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN small_talk_enabled BOOLEAN DEFAULT true"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN small_talk_responses JSONB DEFAULT '{}'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN collect_name BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN collect_email BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN collect_phone BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN collect_custom_fields JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN shopify_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN shopify_store_url VARCHAR(255)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN slack_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN slack_webhook VARCHAR(500)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN zendesk_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN zendesk_subdomain VARCHAR(100)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN freshdesk_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN freshdesk_domain VARCHAR(100)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN goals JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN tags JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN ab_test_enabled BOOLEAN DEFAULT false"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN ab_test_variants JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN flow_version INTEGER DEFAULT 1"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN flow_version_history JSONB DEFAULT '[]'"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bots ADD COLUMN allowed_domains JSONB DEFAULT '[]'"))
+        except Exception:
             pass
         try:
             conn.execute(text("ALTER TABLE messages ADD COLUMN agent_id VARCHAR(255)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE bot_faqs ADD COLUMN tenant_id VARCHAR(50)"))
+            conn.execute(text("ALTER TABLE bot_flows ADD COLUMN tenant_id VARCHAR(50)"))
+            conn.execute(text("ALTER TABLE bot_integrations ADD COLUMN tenant_id VARCHAR(50)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bot_faqs_tenant_id ON bot_faqs (tenant_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bot_flows_tenant_id ON bot_flows (tenant_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_bot_integrations_tenant_id ON bot_integrations (tenant_id)"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE messages ADD COLUMN tenant_id VARCHAR(50)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_tenant_id ON messages (tenant_id)"))
         except Exception:
             pass
         try:
@@ -284,6 +473,12 @@ def init_db():
         ("enterprise", "ingest_scrape", 20),
         ("enterprise", "auth", 60),
     ]
+
+    plan_defaults = [
+        ("starter", 100, 5, 1, 60),
+        ("pro", 5000, 50, 10, 180),
+        ("enterprise", 100000, 1000, 999, 600),
+    ]
     session = SessionLocal()
     try:
         existing = session.query(RateLimitPolicyDB).count()
@@ -300,9 +495,23 @@ def init_db():
                         created_at=now,
                     )
                 )
-            session.commit()
-    except Exception:
+        
+        existing_plans = session.query(PlanLimitsDB).count()
+        if existing_plans == 0:
+            for plan, msg_limit, doc_limit, bot_limit, rpm_limit in plan_defaults:
+                session.add(
+                    PlanLimitsDB(
+                        plan=plan,
+                        message_limit=msg_limit,
+                        document_limit=doc_limit,
+                        bot_limit=bot_limit,
+                        throttling_rpm=rpm_limit
+                    )
+                )
+        session.commit()
+    except Exception as e:
         session.rollback()
+        db_logger.error(f"database_init_failed: {str(e)}")
     finally:
         session.close()
     db_logger.info("database_initialized", extra={
